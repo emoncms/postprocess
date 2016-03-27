@@ -4,4 +4,13 @@ Rather than process inputs as data arrives in emoncms such as calculating cumula
 
 ![postprocessor.png](files/postprocessor.png)
 
+### EmonPi, Emonbase install
 
+Install the postprocess module into /home/pi directory (rather than emoncms/Modules):
+
+    cd /home/pi
+    git clone https://github.com/emoncms/postprocess.git
+
+Symlink the web part of the postprocess module into emoncms/Modules:
+
+    ln -s /home/pi/postprocess/mainserver/postprocess /var/www/emoncms/Modules/postprocess
