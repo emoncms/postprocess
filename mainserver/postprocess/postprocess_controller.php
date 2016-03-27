@@ -68,7 +68,7 @@ function postprocess_controller()
                         $meta = $feed->get_meta($id);
                         $f['start_time'] = $meta->start_time;
                         $f['interval'] = $meta->interval;
-                        $f['npoints'] = $meta->npoints;
+                        $f['npoints'] = $feed->get_npoints($id);
                         $f['id'] = (int) $f['id'];
                         $processlist[$i]->$key = $f;
                     } else {
@@ -130,7 +130,7 @@ function postprocess_controller()
                    return array('content'=>"feed already exists with name $newfeedname");
                    
                 // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
-                $c = $feed->create($session['userid'],$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'));
+                $c = $feed->create($session['userid'],"",$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'));
                 if (!$c['success'])
                     return array('content'=>"feed could not be created");
                     

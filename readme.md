@@ -14,3 +14,7 @@ Install the postprocess module into /home/pi directory (rather than emoncms/Modu
 Symlink the web part of the postprocess module into emoncms/Modules:
 
     ln -s /home/pi/postprocess/mainserver/postprocess /var/www/emoncms/Modules/postprocess
+
+Run the background script with:
+
+    sudo php /home/pi/postprocess/postprocess.php
