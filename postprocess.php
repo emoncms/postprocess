@@ -38,6 +38,6 @@ function process($processitem) {
 }
 
 function updatetimevalue($id,$time,$value){
-    global $host, $auth;
-    http_request("POST",$host."postprocess/updatetimevalue","auth=$auth&feedid=$id&time=$time&value=$value");
+    global $redis;
+    $redis->hMset("feed:$id", array('value' => $value, 'time' => $time));
 }
