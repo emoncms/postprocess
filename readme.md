@@ -6,14 +6,19 @@ Rather than process inputs as data arrives in emoncms such as calculating cumula
 
 ### EmonPi, Emonbase install
 
-Install the postprocess module into /home/pi directory (rather than emoncms/Modules):
+Install the postprocess module into home folder (e.g. /home/pi) directory (rather than emoncms/Modules):
 
-    cd /home/pi
+    cd ~/
     git clone https://github.com/emoncms/postprocess.git
 
-Symlink the web part of the postprocess module into emoncms/Modules:
+Symlink the web part of the postprocess module into emoncms/Modules, if not using Raspberry Pi replace 'pi' with your home folder name:
 
     ln -s /home/pi/postprocess/mainserver/postprocess /var/www/emoncms/Modules/postprocess
+    
+Use the default settings
+
+    cd ~/postprocess 
+    cp default.postprocess.settings.php postprocess.settings.php 
 
 Run the background script with:
 
