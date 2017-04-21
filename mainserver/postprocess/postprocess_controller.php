@@ -6,8 +6,6 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 function postprocess_controller()
 {
     global $session,$route,$mysqli,$redis,$feed_settings;
-    global $postprocessauth;
-    
     $result = false;
     $route->format = "text";
 
@@ -19,15 +17,32 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         ),
+        /*
         "exportcalc"=>array(
             "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
             "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter export feed name:", "nameappend"=>"")
+        ),*/
+        "importcalc"=>array(
+            "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
+            "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter import feed name:", "nameappend"=>"")
         ),
+        "addfeeds"=>array(
+            "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed A:"),
+            "feedB"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed B:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
+        "scalefeed"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
+            "scale"=>array("type"=>"value", "short"=>"Scale by:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
+        /*
         "trimfeedstart"=>array(
             "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to trim:"),
             "trimtime"=>array("type"=>"value", "short"=>"Enter start time to trim from:")
-        )
+        )*/
     );
 
     // -------------------------------------------------------------------------
@@ -58,23 +73,27 @@ function postprocess_controller()
         for ($i=0; $i<count($processlist); $i++) {
             $valid = true;
             $process = $processlist[$i]->process;
-            foreach ($processes[$process] as $key=>$option) 
-            {
-                if ($option['type']=="feed" || $option['type']=="newfeed") {
-                    $id = $processlist[$i]->$key;
-                    if ($feed->exist($id)) {
-                        $f = $feed->get($id);
-                        if ($f['userid']!=$session['userid']) return false;
-                        $meta = $feed->get_meta($id);
-                        $f['start_time'] = $meta->start_time;
-                        $f['interval'] = $meta->interval;
-                        $f['npoints'] = $feed->get_npoints($id);
-                        $f['id'] = (int) $f['id'];
-                        $processlist[$i]->$key = $f;
-                    } else {
-                        $valid = false;
+            if (isset($processes[$process])) {
+                foreach ($processes[$process] as $key=>$option) 
+                {
+                    if ($option['type']=="feed" || $option['type']=="newfeed") {
+                        $id = $processlist[$i]->$key;
+                        if ($feed->exist((int)$id)) {
+                            $f = $feed->get($id);
+                            if ($f['userid']!=$session['userid']) return false;
+                            $meta = $feed->get_meta($id);
+                            $f['start_time'] = $meta->start_time;
+                            $f['interval'] = $meta->interval;
+                            $f['npoints'] = $meta->npoints;
+                            $f['id'] = (int) $f['id'];
+                            $processlist[$i]->$key = $f;
+                        } else {
+                            $valid = false;
+                        }
                     }
                 }
+            } else {
+                $valid = false;
             }
             
             if ($valid) $processlistout[] = $processlist[$i];
@@ -100,7 +119,7 @@ function postprocess_controller()
             
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
-       
+        
         foreach ($processes[$process] as $key=>$option) {
            if (!isset($params->$key)) 
                return array('content'=>"missing option $key");
@@ -116,7 +135,6 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine']) 
                    return array('content'=>"incorrect feed engine");
-               
                $params->$key = $feedid;
            }
            
@@ -139,7 +157,7 @@ function postprocess_controller()
            }
            
            if ($option['type']=="value") {
-               $value = (int) $params->$key;
+               $value = (float) 1*$params->$key;
                if ($value!=$params->$key)
                    return array('content'=>"invalid value");
            }
@@ -155,6 +173,7 @@ function postprocess_controller()
         $processlist[] = $params;
         
         $redis->set("postprocesslist:$userid",json_encode($processlist));
+
         $redis->lpush("postprocessqueue",json_encode($params));
         
         $route->format = "json";
@@ -191,7 +210,7 @@ function postprocess_controller()
            }
            
            if ($option['type']=="value") {
-               $value = (int) $params->$key;
+               $value = (float) $params->$key;
                if ($value!=$params->$key)
                    return array('content'=>"invalid value");
            }
