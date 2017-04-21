@@ -17,12 +17,6 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         ),
-        /*
-        "exportcalc"=>array(
-            "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
-            "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
-            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter export feed name:", "nameappend"=>"")
-        ),*/
         "importcalc"=>array(
             "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
             "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
@@ -119,7 +113,7 @@ function postprocess_controller()
             
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
-        
+       
         foreach ($processes[$process] as $key=>$option) {
            if (!isset($params->$key)) 
                return array('content'=>"missing option $key");
@@ -135,6 +129,7 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine']) 
                    return array('content'=>"incorrect feed engine");
+               
                $params->$key = $feedid;
            }
            
@@ -173,7 +168,6 @@ function postprocess_controller()
         $processlist[] = $params;
         
         $redis->set("postprocesslist:$userid",json_encode($processlist));
-
         $redis->lpush("postprocessqueue",json_encode($params));
         
         $route->format = "json";
