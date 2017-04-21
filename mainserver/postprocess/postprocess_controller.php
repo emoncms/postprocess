@@ -1,15 +1,12 @@
 <?php
 
-$server1host = "";
-$postprocess_auth = "";
-
 // no direct access
 defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
     global $session,$route,$mysqli,$redis,$feed_settings;
-    global $server1host, $postprocessauth;
+    global $postprocessauth;
     
     $result = false;
     $route->format = "text";
@@ -71,7 +68,7 @@ function postprocess_controller()
                         $meta = $feed->get_meta($id);
                         $f['start_time'] = $meta->start_time;
                         $f['interval'] = $meta->interval;
-                        $f['npoints'] = $meta->npoints;
+                        $f['npoints'] = $feed->get_npoints($id);
                         $f['id'] = (int) $f['id'];
                         $processlist[$i]->$key = $f;
                     } else {
@@ -103,12 +100,7 @@ function postprocess_controller()
             
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
-        
-        // Default server for new feeds, 
-        // If the input feeds are on a different server it will ammend new feed creation to the server that contains the input feeds
-        // If more than one input feed on more than one server it will exit with an error.
-        $server = "unset";
-        
+       
         foreach ($processes[$process] as $key=>$option) {
            if (!isset($params->$key)) 
                return array('content'=>"missing option $key");
@@ -124,9 +116,7 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine']) 
                    return array('content'=>"incorrect feed engine");
-               if ($server=="unset") $server = $f['server'];
-               if ($server!=$f['server'])
-                   return array('content'=>"input feeds on more than one server");
+               
                $params->$key = $feedid;
            }
            
@@ -138,11 +128,9 @@ function postprocess_controller()
                    return array('content'=>"new feed name contains invalid characters");
                 if ($feed->get_id($session['userid'],$newfeedname)) 
                    return array('content'=>"feed already exists with name $newfeedname");
-                if ($server=="unset") 
-                   return array('content'=>"server for new feed has not been set");
                    
                 // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
-                $c = $feed->create($session['userid'],$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'),$server);
+                $c = $feed->create($session['userid'],"",$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'));
                 if (!$c['success'])
                     return array('content'=>"feed could not be created");
                     
@@ -167,13 +155,7 @@ function postprocess_controller()
         $processlist[] = $params;
         
         $redis->set("postprocesslist:$userid",json_encode($processlist));
-
-        // The next step is to register the process on the target server
-        if ($server==1) {
-            $result .= file_get_contents($server1host."postprocess/addtoqueue?process=".json_encode($params));
-        } else {
-            $redis->lpush("postprocessqueue",json_encode($params));
-        }
+        $redis->lpush("postprocessqueue",json_encode($params));
         
         $route->format = "json";
         return array('content'=>$params);
@@ -190,7 +172,7 @@ function postprocess_controller()
             
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
-        $server = "unset";
+
         foreach ($processes[$process] as $key=>$option) {
            if (!isset($params->$key)) 
                return array('content'=>"missing option $key");
@@ -206,9 +188,6 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine']) 
                    return array('content'=>"incorrect feed engine");
-               if ($server=="unset") $server = $f['server'];
-               if ($server!=$f['server'])
-                   return array('content'=>"input feeds on more than one server");
            }
            
            if ($option['type']=="value") {
@@ -236,31 +215,10 @@ function postprocess_controller()
         if (!$valid) 
             return array('content'=>"process does not exist, please create");
         
-        // The next step is to register the process on the target server
-        if ($server==1) {
-            $result .= file_get_contents($server1host."postprocess/addtoqueue?process=".json_encode($params));
-        } else {
-            $redis->lpush("postprocessqueue",json_encode($params));
-        }
+        $redis->lpush("postprocessqueue",json_encode($params));
         
         $route->format = "json";
         return array('content'=>$params);
-    }
-    
-    // -------------------------------------------------------------------------
-    // Special authentication account login
-    // -------------------------------------------------------------------------
-    if (isset($_POST['auth']) && $_POST['auth']==$postprocess_auth) {
-        if ($route->action == "updatetimevalue") {
-            $feedid = (int) post("feedid");
-            $time = (int) post("time");
-            $value = (double) post("value");
-            $feed->set_timevalue($feedid, $value, $time);
-        }
-        
-        if ($route->action == "complete") {
-        
-        }
     }
     
     return array('content'=>$result, 'fullwidth'=>false);
