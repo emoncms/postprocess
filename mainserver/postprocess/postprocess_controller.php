@@ -31,7 +31,7 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
             "scale"=>array("type"=>"value", "short"=>"Scale by:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
-        ),
+        )
         /*
         "trimfeedstart"=>array(
             "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to trim:"),
@@ -228,10 +228,12 @@ function postprocess_controller()
         if (!$valid) 
             return array('content'=>"process does not exist, please create");
         
+        // Add process to queue
         $redis->lpush("postprocessqueue",json_encode($params));
         
-        $route->format = "json";
-        
+        // -----------------------------------------------------------------
+        // Run postprocessor script using the emonpi service-runner
+        // -----------------------------------------------------------------
         $update_flag = "/tmp/emoncms-flag-postprocess";
         $update_script = "/home/pi/postprocess/postprocess.sh";
         $update_logfile = "/home/pi/data/postprocess.log";
@@ -244,8 +246,9 @@ function postprocess_controller()
             $result = "Update flag set";
         }
         @fclose($fh);
+        // -----------------------------------------------------------------
         
-        
+        $route->format = "json";
         return array('content'=>$params);
     }
     
