@@ -231,6 +231,21 @@ function postprocess_controller()
         $redis->lpush("postprocessqueue",json_encode($params));
         
         $route->format = "json";
+        
+        $update_flag = "/tmp/emoncms-flag-postprocess";
+        $update_script = "/home/pi/postprocess/postprocess.sh";
+        $update_logfile = "/home/pi/data/postprocess.log";
+        
+        $fh = @fopen($update_flag,"w");
+        if (!$fh) {
+            $result = "ERROR: Can't write the flag $update_flag.";
+        } else {
+            fwrite($fh,"$update_script>$update_logfile");
+            $result = "Update flag set";
+        }
+        @fclose($fh);
+        
+        
         return array('content'=>$params);
     }
     
