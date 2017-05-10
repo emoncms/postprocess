@@ -5,7 +5,9 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $session,$route,$mysqli,$redis,$feed_settings;
+    global $homedir,$session,$route,$mysqli,$redis,$feed_settings;
+    if (!isset($homedir)) $homedir = "/home/pi";
+    
     $result = false;
     $route->format = "text";
 
@@ -179,7 +181,7 @@ function postprocess_controller()
     // -------------------------------------------------------------------------
     if ($route->action == "update" && $session['write']) {
         $route->format = "text";
-
+        
         if (!isset($_GET['process'])) 
             return array('content'=>"expecting parameter process");
             
@@ -235,8 +237,8 @@ function postprocess_controller()
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------
         $update_flag = "/tmp/emoncms-flag-postprocess";
-        $update_script = "/home/pi/postprocess/postprocess.sh";
-        $update_logfile = "/home/pi/data/postprocess.log";
+        $update_script = "$homedir/postprocess/postprocess.sh";
+        $update_logfile = "$homedir/data/postprocess.log";
         
         $fh = @fopen($update_flag,"w");
         if (!$fh) {
