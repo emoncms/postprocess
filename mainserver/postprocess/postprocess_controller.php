@@ -177,6 +177,23 @@ function postprocess_controller()
         $redis->set("postprocesslist:$userid",json_encode($processlist));
         $redis->lpush("postprocessqueue",json_encode($params));
         
+         // -----------------------------------------------------------------
+        // Run postprocessor script using the emonpi service-runner
+        // -----------------------------------------------------------------
+        $update_flag = "/tmp/emoncms-flag-postprocess";
+        $update_script = "$homedir/postprocess/postprocess.sh";
+        $update_logfile = "$homedir/data/postprocess.log";
+        
+        $fh = @fopen($update_flag,"w");
+        if (!$fh) {
+            $result = "ERROR: Can't write the flag $update_flag.";
+        } else {
+            fwrite($fh,"$update_script>$update_logfile");
+            $result = "Update flag set";
+        }
+        @fclose($fh);
+        // -----------------------------------------------------------------
+        
         $route->format = "json";
         return array('content'=>$params);
     }
