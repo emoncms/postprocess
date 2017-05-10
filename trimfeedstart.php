@@ -7,6 +7,8 @@ function trimfeedstart($dir,$processitem)
     
     $feedid = $processitem->feedid;
     $trimtime = $processitem->trimtime;
+    print "TRIM FEED: $feedid, trimtime=$trimtime\n";
+    
     // --------------------------------------------------
 
     if (!file_exists($dir.$feedid.".meta")) {

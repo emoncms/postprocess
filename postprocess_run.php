@@ -18,6 +18,7 @@ require "exportcalc.php";
 require "importcalc.php";
 require "addfeeds.php";
 require "scalefeed.php";
+require "offsetfeed.php";
 require "trimfeedstart.php";
 require "mergefeeds.php";
 
@@ -51,11 +52,12 @@ function process($processitem) {
     
     global $dir;
     if ($processitem->process=="powertokwh") $result = powertokwh($dir,$processitem);
-    // if ($processitem->process=="trimfeedstart") $result = trimfeedstart($dir,$processitem);
+    if ($processitem->process=="trimfeedstart") $result = trimfeedstart($dir,$processitem);
     // if ($processitem->process=="exportcalc") $result = exportcalc($dir,$processitem);
     if ($processitem->process=="importcalc") $result = importcalc($dir,$processitem);
     if ($processitem->process=="addfeeds") $result = addfeeds($dir,$processitem);
     if ($processitem->process=="scalefeed") $result = scalefeed($dir,$processitem);
+    if ($processitem->process=="offsetfeed") $result = offsetfeed($dir,$processitem);
     if ($processitem->process=="mergefeeds") $result = mergefeeds($dir,$processitem);
 }
 

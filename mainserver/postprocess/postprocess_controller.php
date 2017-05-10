@@ -34,16 +34,20 @@ function postprocess_controller()
             "scale"=>array("type"=>"value", "short"=>"Scale by:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
         ),
+        "offsetfeed"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to apply offset:"),
+            "offset"=>array("type"=>"value", "short"=>"Offset by:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
         "mergefeeds"=>array(
             "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed A:"),
             "feedB"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed B:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
-        )
-        /*
+        ),
         "trimfeedstart"=>array(
             "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to trim:"),
             "trimtime"=>array("type"=>"value", "short"=>"Enter start time to trim from:")
-        )*/
+        )
     );
 
     // -------------------------------------------------------------------------
