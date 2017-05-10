@@ -19,6 +19,7 @@ require "importcalc.php";
 require "addfeeds.php";
 require "scalefeed.php";
 require "trimfeedstart.php";
+require "mergefeeds.php";
 
 if (!$redis_enabled) { echo "ERROR: Redis is not enabled"; die; }
 $redis = new Redis();
@@ -55,6 +56,7 @@ function process($processitem) {
     if ($processitem->process=="importcalc") $result = importcalc($dir,$processitem);
     if ($processitem->process=="addfeeds") $result = addfeeds($dir,$processitem);
     if ($processitem->process=="scalefeed") $result = scalefeed($dir,$processitem);
+    if ($processitem->process=="mergefeeds") $result = mergefeeds($dir,$processitem);
 }
 
 function updatetimevalue($id,$time,$value){

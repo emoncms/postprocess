@@ -33,6 +33,11 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
             "scale"=>array("type"=>"value", "short"=>"Scale by:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
+        "mergefeeds"=>array(
+            "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed A:"),
+            "feedB"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed B:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
         )
         /*
         "trimfeedstart"=>array(
