@@ -47,6 +47,11 @@ function postprocess_controller()
         "trimfeedstart"=>array(
             "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to trim:"),
             "trimtime"=>array("type"=>"value", "short"=>"Enter start time to trim from:")
+        ),
+        "removeresets"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "maxrate"=>array("type"=>"value", "short"=>"Max accumulation rate:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         )
     );
 

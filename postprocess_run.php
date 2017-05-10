@@ -21,6 +21,7 @@ require "scalefeed.php";
 require "offsetfeed.php";
 require "trimfeedstart.php";
 require "mergefeeds.php";
+require "removeresets.php";
 
 if (!$redis_enabled) { echo "ERROR: Redis is not enabled"; die; }
 $redis = new Redis();
@@ -59,6 +60,7 @@ function process($processitem) {
     if ($processitem->process=="scalefeed") $result = scalefeed($dir,$processitem);
     if ($processitem->process=="offsetfeed") $result = offsetfeed($dir,$processitem);
     if ($processitem->process=="mergefeeds") $result = mergefeeds($dir,$processitem);
+    if ($processitem->process=="removeresets") $result = removeresets($dir,$processitem);
 }
 
 function updatetimevalue($id,$time,$value){
