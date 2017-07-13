@@ -54,7 +54,7 @@ function process($processitem) {
     global $dir;
     if ($processitem->process=="powertokwh") $result = powertokwh($dir,$processitem);
     if ($processitem->process=="trimfeedstart") $result = trimfeedstart($dir,$processitem);
-    // if ($processitem->process=="exportcalc") $result = exportcalc($dir,$processitem);
+    if ($processitem->process=="exportcalc") $result = exportcalc($dir,$processitem);
     if ($processitem->process=="importcalc") $result = importcalc($dir,$processitem);
     if ($processitem->process=="addfeeds") $result = addfeeds($dir,$processitem);
     if ($processitem->process=="scalefeed") $result = scalefeed($dir,$processitem);
