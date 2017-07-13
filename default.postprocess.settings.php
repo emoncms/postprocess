@@ -1,4 +1,8 @@
 <?php
 
-    $basedir = "/home/pi/postprocess/";
-    $dir = "/home/pi/data/phpfina/";
+    $basedir = "/home/user/postprocess/";
+    $dir = "/var/lib/phpfina/";
+    
+    // Special authentication key
+    $host = "";
+    $auth = "";

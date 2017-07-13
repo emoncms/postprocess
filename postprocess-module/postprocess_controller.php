@@ -5,11 +5,13 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $homedir,$session,$route,$mysqli,$redis,$feed_settings;
-    if (!isset($homedir)) $homedir = "/home/pi";
-    
+    global $session,$route,$mysqli,$redis,$feed_settings;
     $result = false;
     $route->format = "text";
+    
+    $server1 = "";
+    $server2 = "";
+    $authkey = "";
 
     include "Modules/feed/feed_model.php";
     $feed = new Feed($mysqli,$redis,$feed_settings);
@@ -134,7 +136,12 @@ function postprocess_controller()
             
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
-       
+        
+        // Default server for new feeds, 
+        // If the input feeds are on a different server it will ammend new feed creation to the server that contains the input feeds
+        // If more than one input feed on more than one server it will exit with an error.
+        $server = "unset";
+        
         foreach ($processes[$process] as $key=>$option) {
            if (!isset($params->$key)) 
                return array('content'=>"missing option $key");
@@ -150,7 +157,9 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine']) 
                    return array('content'=>"incorrect feed engine");
-               
+               if ($server=="unset") $server = $f['server'];
+               if ($server!=$f['server'])
+                   return array('content'=>"input feeds on more than one server");
                $params->$key = $feedid;
            }
            
@@ -162,9 +171,11 @@ function postprocess_controller()
                    return array('content'=>"new feed name contains invalid characters");
                 if ($feed->get_id($session['userid'],$newfeedname)) 
                    return array('content'=>"feed already exists with name $newfeedname");
+                if ($server=="unset") 
+                   return array('content'=>"server for new feed has not been set");
                    
                 // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
-                $c = $feed->create($session['userid'],"",$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'));
+                $c = $feed->create($session['userid'],$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'),$server);
                 if (!$c['success'])
                     return array('content'=>"feed could not be created");
                     
@@ -189,24 +200,15 @@ function postprocess_controller()
         $processlist[] = $params;
         
         $redis->set("postprocesslist:$userid",json_encode($processlist));
-        $redis->lpush("postprocessqueue",json_encode($params));
-        
-         // -----------------------------------------------------------------
-        // Run postprocessor script using the emonpi service-runner
-        // -----------------------------------------------------------------
-        $update_flag = "/tmp/emoncms-flag-postprocess";
-        $update_script = "$homedir/postprocess/postprocess.sh";
-        $update_logfile = "$homedir/data/postprocess.log";
-        
-        $fh = @fopen($update_flag,"w");
-        if (!$fh) {
-            $result = "ERROR: Can't write the flag $update_flag.";
+
+        // The next step is to register the process on the target server
+        if ($server==1) {
+            $result .= file_get_contents("$server1/postprocess/addtoqueue?process=".json_encode($params));
+        } else if ($server==2) {
+            $result .= file_get_contents("$server2/postprocess/addtoqueue?process=".json_encode($params));
         } else {
-            fwrite($fh,"$update_script>$update_logfile");
-            $result = "Update flag set";
+            $redis->lpush("postprocessqueue",json_encode($params));
         }
-        @fclose($fh);
-        // -----------------------------------------------------------------
         
         $route->format = "json";
         return array('content'=>$params);
@@ -217,13 +219,13 @@ function postprocess_controller()
     // -------------------------------------------------------------------------
     if ($route->action == "update" && $session['write']) {
         $route->format = "text";
-        
+
         if (!isset($_GET['process'])) 
             return array('content'=>"expecting parameter process");
             
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
-
+        $server = "unset";
         foreach ($processes[$process] as $key=>$option) {
            if (!isset($params->$key)) 
                return array('content'=>"missing option $key");
@@ -239,6 +241,9 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine']) 
                    return array('content'=>"incorrect feed engine");
+               if ($server=="unset") $server = $f['server'];
+               if ($server!=$f['server'])
+                   return array('content'=>"input feeds on more than one server");
            }
            
            if ($option['type']=="value") {
@@ -266,28 +271,33 @@ function postprocess_controller()
         if (!$valid) 
             return array('content'=>"process does not exist, please create");
         
-        // Add process to queue
-        $redis->lpush("postprocessqueue",json_encode($params));
-        
-        // -----------------------------------------------------------------
-        // Run postprocessor script using the emonpi service-runner
-        // -----------------------------------------------------------------
-        $update_flag = "/tmp/emoncms-flag-postprocess";
-        $update_script = "$homedir/postprocess/postprocess.sh";
-        $update_logfile = "$homedir/data/postprocess.log";
-        
-        $fh = @fopen($update_flag,"w");
-        if (!$fh) {
-            $result = "ERROR: Can't write the flag $update_flag.";
+        // The next step is to register the process on the target server
+        if ($server==1) {
+            $result .= file_get_contents("$server1/postprocess/addtoqueue?process=".json_encode($params));
+        } else if ($server==2) {
+            $result .= file_get_contents("$server2/postprocess/addtoqueue?process=".json_encode($params));
         } else {
-            fwrite($fh,"$update_script>$update_logfile");
-            $result = "Update flag set";
+            $redis->lpush("postprocessqueue",json_encode($params));
         }
-        @fclose($fh);
-        // -----------------------------------------------------------------
         
         $route->format = "json";
         return array('content'=>$params);
+    }
+    
+    // -------------------------------------------------------------------------
+    // Special authentication account login
+    // -------------------------------------------------------------------------
+    if (isset($_POST['auth']) && $_POST['auth']==$authkey) {
+        if ($route->action == "updatetimevalue") {
+            $feedid = (int) post("feedid");
+            $time = (int) post("time");
+            $value = (double) post("value");
+            $feed->set_timevalue($feedid, $value, $time);
+        }
+        
+        if ($route->action == "complete") {
+            // Mechamism for updating process as completed
+        }
     }
     
     return array('content'=>$result, 'fullwidth'=>false);

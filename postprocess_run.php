@@ -1,15 +1,11 @@
 <?php
 
-define('EMONCMS_EXEC', 1);
-chdir("/var/www/emoncms");
-require "process_settings.php";
-if (!isset($homedir)) $homedir = "/home/pi";
-$basedir = "$homedir/postprocess/";
-$dir = $feed_settings["phpfina"]["datadir"];
-chdir($basedir);
+require "postprocess.settings.php";
 
-$fp = fopen("/tmp/postprocess-runlock", "w");
+$fp = fopen($basedir."runlock", "w");
 if (! flock($fp, LOCK_EX | LOCK_NB)) { echo "Already running\n"; die; }
+
+define('EMONCMS_EXEC', 1);
 
 require "common.php";
 require "request.php";
@@ -23,16 +19,8 @@ require "trimfeedstart.php";
 require "mergefeeds.php";
 require "removeresets.php";
 
-if (!$redis_enabled) { echo "ERROR: Redis is not enabled"; die; }
 $redis = new Redis();
-$connected = $redis->connect($redis_server['host'], $redis_server['port']);
-if (!$connected) { echo "Can't connect to redis at ".$redis_server['host'].":".$redis_server['port']; die; }
-if (!empty($redis_server['prefix'])) $redis->setOption(Redis::OPT_PREFIX, $redis_server['prefix']);
-if (!empty($redis_server['auth'])) {
-    if (!$redis->auth($redis_server['auth'])) {
-        echo "Can't connect to redis at ".$redis_server['host'].", autentication failed"; die;
-    }
-}
+$connected = $redis->connect("127.0.0.1");
 
 while(true){
     $len = $redis->llen("postprocessqueue");
@@ -42,7 +30,7 @@ while(true){
         print $processitem."\n";
         process($processitem);
     } else {
-        break;
+        // break;
     }
     sleep(1);
 }
@@ -63,7 +51,12 @@ function process($processitem) {
     if ($processitem->process=="removeresets") $result = removeresets($dir,$processitem);
 }
 
+//function updatetimevalue($id,$time,$value){
+//    global $redis;
+//    $redis->hMset("feed:$id", array('value' => $value, 'time' => $time));
+//}
+
 function updatetimevalue($id,$time,$value){
-    global $redis;
-    $redis->hMset("feed:$id", array('value' => $value, 'time' => $time));
+    global $host, $auth;
+    http_request("POST",$host."postprocess/updatetimevalue","auth=$auth&feedid=$id&time=$time&value=$value");
 }
