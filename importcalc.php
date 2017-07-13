@@ -2,22 +2,22 @@
 
 function importcalc($dir,$processitem)
 {
-    if (!isset($processitem->generation)) return false;
     if (!isset($processitem->consumption)) return false;
+    if (!isset($processitem->generation)) return false;
     if (!isset($processitem->output)) return false;
     
-    $generation = $processitem->generation;
-    $consumption = $processitem->consumption;
+    $feedA = $processitem->consumption;
+    $feedB = $processitem->generation;
     $output = $processitem->output;
     // --------------------------------------------------
     
-    if (!file_exists($dir.$generation.".meta")) {
-        print "input file $generation.meta does not exist\n";
+    if (!file_exists($dir.$feedA.".meta")) {
+        print "input file $feedA.meta does not exist\n";
         return false;
     }
 
-    if (!file_exists($dir.$consumption.".meta")) {
-        print "output file $consumption.meta does not exist\n";
+    if (!file_exists($dir.$feedB.".meta")) {
+        print "input file $feedB.meta does not exist\n";
         return false;
     }
     
@@ -26,84 +26,104 @@ function importcalc($dir,$processitem)
         return false;
     }
 
-    $gen_meta = getmeta($dir,$generation);
-    $use_meta = getmeta($dir,$consumption);
+    $feedA_meta = getmeta($dir,$feedA);
+    $feedB_meta = getmeta($dir,$feedB);
     
-    if ($gen_meta->start_time != $use_meta->start_time) {
-        print "start_time of generation and consumption feeds are different\n";
-        return false;
+    if ($feedA_meta->interval != $feedB_meta->interval) {
+        print "NOTICE: interval of feeds do not match, feedA:$feedA_meta->interval, feedB:$feedB_meta->interval\n";
     }
     
-    if ($gen_meta->interval != $use_meta->interval) {
-        print "interval of generation and consumption feeds are different\n";
-        return false;
-    }
+    print "feedA start_time=$feedA_meta->start_time interval=$feedA_meta->interval\n";
+    print "feedB start_time=$feedB_meta->start_time interval=$feedB_meta->interval\n";
     
-    createmeta($dir,$output,$gen_meta);
-    $out_meta = getmeta($dir,$output);
-    // if ($om->npoints >= $im->npoints) {
-    //   print "output feed already up to date\n";
-    //   return false;
-    // }
+    $feedA_interval_selected = false;
+    $feedB_interval_selected = false;
+    if ($feedA_meta->interval==$feedB_meta->interval) $out_interval = $feedA_meta->interval;
+    if ($feedA_meta->interval>$feedB_meta->interval) { $out_interval = $feedA_meta->interval; $feedA_interval_selected = true; } 
+    if ($feedA_meta->interval<$feedB_meta->interval) { $out_interval = $feedB_meta->interval; $feedB_interval_selected = true; } 
+    
+    $out_start_time = 0;
+    if ($feedA_meta->start_time==$feedB_meta->start_time) $out_start_time = (int) $feedA_meta->start_time;
+    if ($feedA_meta->start_time<$feedB_meta->start_time) $out_start_time = (int) $feedA_meta->start_time;
+    if ($feedA_meta->start_time>$feedB_meta->start_time) $out_start_time = (int) $feedB_meta->start_time;
+    
+    $out_start_time = floor($out_start_time / $out_interval) * $out_interval;
+    
+    $out_meta = new stdClass();
+    $out_meta->start_time = $out_start_time;
+    $out_meta->interval = $out_interval;
+    
+    print "OUT start_time=$out_start_time interval=$out_interval\n";
+    
+    createmeta($dir,$output,$out_meta);
+    
+    $output_meta = getmeta($dir,$output);
 
-    if (!$gen_fh = @fopen($dir.$generation.".dat", 'rb')) {
-        echo "ERROR: could not open $dir $generation.dat\n";
+    if (!$feedA_fh = @fopen($dir.$feedA.".dat", 'rb')) {
+        echo "ERROR: could not open $dir $feedA.dat\n";
         return false;
     }
-
-    if (!$use_fh = @fopen($dir.$consumption.".dat", 'rb')) {
-        echo "ERROR: could not open $dir $consumption.dat\n";
-        return false;
-    } 
     
-    if (!$out_fh = @fopen($dir.$output.".dat", 'c+')) {
+    if (!$feedB_fh = @fopen($dir.$feedB.".dat", 'rb')) {
+        echo "ERROR: could not open $dir $feedB.dat\n";
+        return false;
+    }
+    
+    if (!$output_fh = @fopen($dir.$output.".dat", 'ab')) {
         echo "ERROR: could not open $dir $output.dat\n";
         return false;
     }
     
-    // get start position
-    $start_pos = $out_meta->npoints;
+    // Work out start and end time of merged feeds:
+    $feedA_end_time = $feedA_meta->start_time + ($feedA_meta->interval * $feedA_meta->npoints);
+    $feedB_end_time = $feedB_meta->start_time + ($feedB_meta->interval * $feedB_meta->npoints);
     
-    // get end position
-    $end_pos = $gen_meta->npoints;
-    if ($use_meta->npoints<$end_pos) $end_pos = $use_meta->npoints;
+    $start_time = $output_meta->start_time + ($output_meta->npoints * $output_meta->interval);
+    $end_time = $feedA_end_time;
+    if ($feedB_end_time>$feedA_end_time) $end_time = $feedB_end_time;
+    
+    $interval = $output_meta->interval;
     
     $buffer = "";
-    $gen = 0;
-    $use = 0;
+    for ($time=$start_time; $time<$end_time; $time+=$interval) 
+    {
+        $posA = floor(($time - $feedA_meta->start_time) / $feedA_meta->interval);
+        $posB = floor(($time - $feedB_meta->start_time) / $feedB_meta->interval);
     
-    fseek($gen_fh,$start_pos*4);
-    fseek($use_fh,$start_pos*4);
-    fseek($out_fh,$start_pos*4);
+        $useval = NAN;
+        $genval = NAN;
     
-    for ($n=($start_pos+1); $n<=$end_pos; $n++) {
-        $gen_tmp = unpack("f",fread($gen_fh,4));
-        $use_tmp = unpack("f",fread($use_fh,4));
-        
-        $import = NAN;
-        if (!is_nan($gen_tmp[1]) && !is_nan($use_tmp[1])) 
-        { 
-            $gen = 1*$gen_tmp[1];
-            $use = 1*$use_tmp[1];       
-        
-            $import = $use - $gen;
-            if ($import>0) $import = 0;
+        if ($posA>=0 && $posA<$feedA_meta->npoints) {
+            fseek($feedA_fh,$posA*4);
+            $feedA_tmp = unpack("f",fread($feedA_fh,4));
+            $useval = $feedA_tmp[1];
         }
-        $buffer .= pack("f",$import);
+
+        if ($posB>=0 && $posB<$feedB_meta->npoints) {
+            fseek($feedB_fh,$posB*4);
+            $feedB_tmp = unpack("f",fread($feedB_fh,4));
+            $genval = $feedB_tmp[1];
+        }
+        
+        $importval = NAN;
+        if (!is_nan($useval)) $importval = $useval;
+        if (!is_nan($genval) && !is_nan($genval)) $importval = $useval - $genval;
+        if ($importval<0) $importval = 0;
+        
+        $buffer .= pack("f",$importval*1.0);
     }
+     
+    fwrite($output_fh,$buffer);
     
-    fwrite($out_fh,$buffer);
+    $byteswritten = strlen($buffer);
+    print "bytes written: ".$byteswritten."\n";
+    fclose($output_fh);
+    fclose($feedA_fh);
+    fclose($feedB_fh);
     
-    print "bytes written: ".strlen($buffer)."\n";
-    fclose($out_fh);
-    fclose($gen_fh);
-    fclose($use_fh);
-    
-    $time = $gen_meta->start_time + ($gen_meta->npoints * $gen_meta->interval);
-    $value = $import;
-    
-    print "last time value: ".$time." ".$value."\n";
-    updatetimevalue($output,$time,$value);
-    
+    if ($byteswritten>0) {
+        print "last time value: ".$time." ".$importval."\n";
+        updatetimevalue($output,$time,$importval);
+    }
     return true;
 }

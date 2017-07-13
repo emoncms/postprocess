@@ -17,7 +17,7 @@ function addfeeds($dir,$processitem)
     }
 
     if (!file_exists($dir.$feedB.".meta")) {
-        print "output file $feedB.meta does not exist\n";
+        print "input file $feedB.meta does not exist\n";
         return false;
     }
     
@@ -29,79 +29,101 @@ function addfeeds($dir,$processitem)
     $feedA_meta = getmeta($dir,$feedA);
     $feedB_meta = getmeta($dir,$feedB);
     
-    if ($feedA_meta->start_time != $feedB_meta->start_time) {
-        print "start_time of feedA and feedB feeds are different\n";
-        return false;
-    }
-    
     if ($feedA_meta->interval != $feedB_meta->interval) {
-        print "interval of feedA and feedB feeds are different\n";
-        return false;
+        print "NOTICE: interval of feeds do not match, feedA:$feedA_meta->interval, feedB:$feedB_meta->interval\n";
     }
     
-    createmeta($dir,$output,$feedA_meta);
-    $out_meta = getmeta($dir,$output);
-    // if ($om->npoints >= $im->npoints) {
-    //   print "output feed already up to date\n";
-    //   return false;
-    // }
+    print "FeedA start_time=$feedA_meta->start_time interval=$feedA_meta->interval\n";
+    print "FeedB start_time=$feedB_meta->start_time interval=$feedB_meta->interval\n";
+    
+    $feedA_interval_selected = false;
+    $feedB_interval_selected = false;
+    if ($feedA_meta->interval==$feedB_meta->interval) $out_interval = $feedA_meta->interval;
+    if ($feedA_meta->interval>$feedB_meta->interval) { $out_interval = $feedA_meta->interval; $feedA_interval_selected = true; } 
+    if ($feedA_meta->interval<$feedB_meta->interval) { $out_interval = $feedB_meta->interval; $feedB_interval_selected = true; } 
+    
+    $out_start_time = 0;
+    if ($feedA_meta->start_time==$feedB_meta->start_time) $out_start_time = (int) $feedA_meta->start_time;
+    if ($feedA_meta->start_time<$feedB_meta->start_time) $out_start_time = (int) $feedA_meta->start_time;
+    if ($feedA_meta->start_time>$feedB_meta->start_time) $out_start_time = (int) $feedB_meta->start_time;
+    
+    $out_start_time = floor($out_start_time / $out_interval) * $out_interval;
+    
+    $out_meta = new stdClass();
+    $out_meta->start_time = $out_start_time;
+    $out_meta->interval = $out_interval;
+    
+    print "OUT start_time=$out_start_time interval=$out_interval\n";
+    
+    createmeta($dir,$output,$out_meta);
+    
+    $output_meta = getmeta($dir,$output);
 
     if (!$feedA_fh = @fopen($dir.$feedA.".dat", 'rb')) {
         echo "ERROR: could not open $dir $feedA.dat\n";
         return false;
     }
-
+    
     if (!$feedB_fh = @fopen($dir.$feedB.".dat", 'rb')) {
         echo "ERROR: could not open $dir $feedB.dat\n";
         return false;
-    } 
+    }
     
-    if (!$out_fh = @fopen($dir.$output.".dat", 'c+')) {
+    if (!$output_fh = @fopen($dir.$output.".dat", 'ab')) {
         echo "ERROR: could not open $dir $output.dat\n";
         return false;
     }
     
-    // get start position
-    $start_pos = $out_meta->npoints;
+    // Work out start and end time of merged feeds:
+    $feedA_end_time = $feedA_meta->start_time + ($feedA_meta->interval * $feedA_meta->npoints);
+    $feedB_end_time = $feedB_meta->start_time + ($feedB_meta->interval * $feedB_meta->npoints);
     
-    // get end position
-    $end_pos = $feedA_meta->npoints;
-    if ($feedB_meta->npoints<$end_pos) $end_pos = $feedB_meta->npoints;
+    $start_time = $output_meta->start_time + ($output_meta->npoints * $output_meta->interval);
+    $end_time = $feedA_end_time;
+    if ($feedB_end_time>$feedA_end_time) $end_time = $feedB_end_time;
+    
+    $interval = $output_meta->interval;
     
     $buffer = "";
-    $A = 0;
-    $B = 0;
+    for ($time=$start_time; $time<$end_time; $time+=$interval) 
+    {
+        $posA = floor(($time - $feedA_meta->start_time) / $feedA_meta->interval);
+        $posB = floor(($time - $feedB_meta->start_time) / $feedB_meta->interval);
     
-    fseek($feedA_fh,$start_pos*4);
-    fseek($feedB_fh,$start_pos*4);
-    fseek($out_fh,$start_pos*4);
+        $valueA = NAN;
+        $valueB = NAN;
     
-    for ($n=($start_pos+1); $n<=$end_pos; $n++) {
-        $feedA_tmp = unpack("f",fread($feedA_fh,4));
-        $feedB_tmp = unpack("f",fread($feedB_fh,4));
-        
-        $sum = NAN;
-        if (!is_nan($feedA_tmp[1]) && !is_nan($feedB_tmp[1])) 
-        { 
-            $A = 1*$feedA_tmp[1];
-            $B = 1*$feedB_tmp[1];
-            $sum = $A + $B;
+        if ($posA>=0 && $posA<$feedA_meta->npoints) {
+            fseek($feedA_fh,$posA*4);
+            $feedA_tmp = unpack("f",fread($feedA_fh,4));
+            $valueA = $feedA_tmp[1];
         }
-        $buffer .= pack("f",$sum);
+
+        if ($posB>=0 && $posB<$feedB_meta->npoints) {
+            fseek($feedB_fh,$posB*4);
+            $feedB_tmp = unpack("f",fread($feedB_fh,4));
+            $valueB = $feedB_tmp[1];
+        }
+        
+        $outval = NAN;
+        if (!is_nan($valueA)) $outval = $valueA;
+        if (!is_nan($valueB)) $outval = $valueB;
+        if (!is_nan($valueA) && !is_nan($valueB)) $outval = $valueB + $valueA;
+        
+        $buffer .= pack("f",$outval*1.0);
     }
+        
+    fwrite($output_fh,$buffer);
     
-    fwrite($out_fh,$buffer);
-    
-    print "bytes written: ".strlen($buffer)."\n";
-    fclose($out_fh);
+    $byteswritten = strlen($buffer);
+    print "bytes written: ".$byteswritten."\n";
+    fclose($output_fh);
     fclose($feedA_fh);
     fclose($feedB_fh);
     
-    $time = $feedA_meta->start_time + ($feedA_meta->npoints * $feedA_meta->interval);
-    $value = $sum;
-    
-    print "last time value: ".$time." ".$value."\n";
-    updatetimevalue($output,$time,$value);
-    
+    if ($byteswritten>0) {
+        print "last time value: ".$time." ".$outval."\n";
+        updatetimevalue($output,$time,$outval);
+    }
     return true;
 }

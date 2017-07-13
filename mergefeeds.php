@@ -69,7 +69,7 @@ function mergefeeds($dir,$processitem)
         return false;
     }
     
-    if (!$output_fh = @fopen($dir.$output.".dat", 'wb')) {
+    if (!$output_fh = @fopen($dir.$output.".dat", 'ab')) {
         echo "ERROR: could not open $dir $output.dat\n";
         return false;
     }
@@ -78,7 +78,7 @@ function mergefeeds($dir,$processitem)
     $feedA_end_time = $feedA_meta->start_time + ($feedA_meta->interval * $feedA_meta->npoints);
     $feedB_end_time = $feedB_meta->start_time + ($feedB_meta->interval * $feedB_meta->npoints);
     
-    $start_time = $output_meta->start_time;
+    $start_time = $output_meta->start_time + ($output_meta->npoints * $output_meta->interval);
     $end_time = $feedA_end_time;
     if ($feedB_end_time>$feedA_end_time) $end_time = $feedB_end_time;
     
@@ -110,9 +110,7 @@ function mergefeeds($dir,$processitem)
         if (!is_nan($valueB)) $outval = $valueB;
         if (!is_nan($valueA) && !is_nan($valueB)) $outval = ($valueB+$valueA)*0.5;
         
-        
         $buffer .= pack("f",$outval*1.0);
-        
     }
         
     fwrite($output_fh,$buffer);
