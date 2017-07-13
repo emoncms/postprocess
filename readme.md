@@ -13,7 +13,7 @@ Install the postprocess module into home folder (e.g. /home/pi) directory (rathe
 
 Symlink the web part of the postprocess module into emoncms/Modules, if not using Raspberry Pi replace 'pi' with your home folder name:
 
-    ln -s /home/pi/postprocess/mainserver/postprocess /var/www/emoncms/Modules/postprocess
+    ln -s /home/pi/postprocess/postprocess-module /var/www/emoncms/Modules/postprocess
     
 Use the default settings
 
