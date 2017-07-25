@@ -1,6 +1,6 @@
 <?php
 
-function scalefeed($dir,$processitem)
+function removenan($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;
     if (!isset($processitem->scale)) return false;

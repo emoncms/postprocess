@@ -13,15 +13,25 @@ if (! flock($fp, LOCK_EX | LOCK_NB)) { echo "Already running\n"; die; }
 
 require "common.php";
 require "request.php";
-require "powertokwh.php";
-require "exportcalc.php";
-require "importcalc.php";
-require "addfeeds.php";
-require "scalefeed.php";
-require "offsetfeed.php";
-require "trimfeedstart.php";
-require "mergefeeds.php";
-require "removeresets.php";
+
+// Auto load processes
+$processes = array();
+$files = scandir($basedir."processes");
+for ($i=2; $i<count($files); $i++) {
+
+    // compile process list
+    $process = str_replace(".php","",$files[$i]);
+    $processes[] = $process;
+    
+    // full file location and name
+    $process_file = $basedir."processes/".$process.".php";
+    
+    // Include the process file and check that process function exists
+    require $process_file;
+    if (!function_exists($process)) {
+        echo "Error: missing process function: $process\n"; die;
+    }
+}
 
 if (!$redis_enabled) { echo "ERROR: Redis is not enabled"; die; }
 $redis = new Redis();
@@ -48,19 +58,18 @@ while(true){
 }
 
 function process($processitem) {
+
     $processitem = json_decode($processitem);
     if ($processitem==null) return false;
     
-    global $dir;
-    if ($processitem->process=="powertokwh") $result = powertokwh($dir,$processitem);
-    if ($processitem->process=="trimfeedstart") $result = trimfeedstart($dir,$processitem);
-    if ($processitem->process=="exportcalc") $result = exportcalc($dir,$processitem);
-    if ($processitem->process=="importcalc") $result = importcalc($dir,$processitem);
-    if ($processitem->process=="addfeeds") $result = addfeeds($dir,$processitem);
-    if ($processitem->process=="scalefeed") $result = scalefeed($dir,$processitem);
-    if ($processitem->process=="offsetfeed") $result = offsetfeed($dir,$processitem);
-    if ($processitem->process=="mergefeeds") $result = mergefeeds($dir,$processitem);
-    if ($processitem->process=="removeresets") $result = removeresets($dir,$processitem);
+    global $dir,$processes;
+    
+    $process = $processitem->process;
+    if (array_search($process,$processes)!==false) {
+              
+        $result = $process($dir,$processitem);
+
+    }
 }
 
 function updatetimevalue($id,$time,$value){

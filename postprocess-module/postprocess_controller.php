@@ -19,6 +19,10 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         ),
+        "accumulator"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+        ),
         "importcalc"=>array(
             "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
             "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
