@@ -52,6 +52,7 @@ function trimfeedstart($dir,$processitem)
     fclose($of);
     
     $meta->start_time = $trimtime;
+    $meta->npoints = $length;
     createmeta($dir,$feedid,$meta);
     
     return true;
