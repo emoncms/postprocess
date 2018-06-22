@@ -20,32 +20,30 @@ function downsample($dir,$processitem)
         print "output file $output.meta does not exist\n";
         return false;
     }
+    
+    copy($dir.$input.".meta",$dir.$output.".meta");
+    copy($dir.$input.".dat",$dir.$output.".dat");
 
     $input_meta = getmeta($dir,$input);
+    // unlink
+    $output_meta = json_decode(json_encode($input_meta));
     
-    $output_meta = $input_meta;
     $output_meta->interval = (int) $processitem->interval;
     if ($output_meta->interval<10) $output_meta->interval = 10;
-    createmeta($dir,$output,$output_meta);
     
-    $output_meta = getmeta($dir,$output);
-    // if ($om->npoints >= $im->npoints) {
-    //   print "output feed already up to date\n";
-    //   return false;
-    // }
+    print "output meta interval: ".$output_meta->interval."\n";
 
     if (!$input_fh = @fopen($dir.$input.".dat", 'rb')) {
         echo "ERROR: could not open $dir $input.dat\n";
         return false;
     }
-    
-    if (!$output_fh = @fopen($dir.$output.".dat", 'c+')) {
-        echo "ERROR: could not open $dir $output.dat\n";
-        return false;
-    }
         
     $start_time = $input_meta->start_time;
     $end_time = $start_time + ($input_meta->npoints*$input_meta->interval);
+    
+    print "start_time:$start_time, end_time:$end_time\n";
+    print "input_interval: ".$input_meta->interval."\n";
+    print "output_interval: ".$output_meta->interval."\n";
     
     $buffer = "";
     
@@ -57,7 +55,7 @@ function downsample($dir,$processitem)
     
     $mean = 0;
     
-    for ($time=$start_time; $time<$end_time; $time+=$interval) {
+    for ($time=$start_time; $time<$end_time; $time+=$output_meta->interval) {
     
         $input_pos = floor(($time - $input_meta->start_time) / $input_meta->interval);
         fseek($input_fh,$input_pos*4);
@@ -70,18 +68,23 @@ function downsample($dir,$processitem)
                 $n2 ++;
             }
         }
-        $mean = $sum / $n2;
+        $mean = NAN;
+        if ($n2>0) $mean = $sum / $n2;
         
         $buffer .= pack("f",$mean);
     }
-    
+    fclose($input_fh);
+        
+    createmeta($dir,$input,$output_meta);
+    if (!$output_fh = @fopen($dir.$input.".dat", 'wb')) {
+        echo "ERROR: could not open $dir $input.dat\n";
+        return false;
+    }
     fwrite($output_fh,$buffer);
+    fclose($output_fh);
     
     $byteswritten = strlen($buffer);
     print "bytes written: ".$byteswritten."\n";
-    
-    fclose($output_fh);
-    fclose($input_fh);
     
     if ($byteswritten>0) {
         print "last time value: ".$time." ".$mean."\n";
