@@ -61,9 +61,9 @@ function postprocess_controller()
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         ),
         "downsample"=>array(
-            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to downsample:"),
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to downsample:"),
             "interval"=>array("type"=>"value", "short"=>"Downsample interval:"),
-            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter backup feed name:", "nameappend"=>"")
         )
     );
 
@@ -182,7 +182,7 @@ function postprocess_controller()
                 // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
                 $c = $feed->create($session['userid'],$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'),$server);
                 if (!$c['success'])
-                    return array('content'=>"feed could not be created: ".$c['message']);
+                    return json_encode($c); //array('content'=>"$newfeedname $server feed could not be created: ".$c['message']);
                     
                 // replace new feed name with its id if successfully created
                 $params->$key = $c['feedid'];
@@ -208,15 +208,15 @@ function postprocess_controller()
 
         // The next step is to register the process on the target server
         if ($server==1) {
-            $result .= file_get_contents("$server1/postprocess/addtoqueue?process=".json_encode($params));
+            $result .= file_get_contents("$server1/postprocess/addtoqueue?process=".json_encode($params)."&authkey=".$authkey);
         } else if ($server==2) {
-            $result .= file_get_contents("$server2/postprocess/addtoqueue?process=".json_encode($params));
+            $result .= file_get_contents("$server2/postprocess/addtoqueue?process=".json_encode($params)."&authkey=".$authkey);
         } else {
             $redis->lpush("postprocessqueue",json_encode($params));
         }
         
         $route->format = "json";
-        return array('content'=>$params);
+        return array('content'=>$params,"result"=>$result);
     }
 
     // -------------------------------------------------------------------------
@@ -278,14 +278,15 @@ function postprocess_controller()
         
         // The next step is to register the process on the target server
         if ($server==1) {
-            $result .= file_get_contents("$server1/postprocess/addtoqueue?process=".json_encode($params));
+            $result .= file_get_contents("$server1/postprocess/addtoqueue?process=".json_encode($params)."&authkey=".$authkey);
         } else if ($server==2) {
-            $result .= file_get_contents("$server2/postprocess/addtoqueue?process=".json_encode($params));
+            $result .= file_get_contents("$server2/postprocess/addtoqueue?process=".json_encode($params)."&authkey=".$authkey);
         } else {
             $redis->lpush("postprocessqueue",json_encode($params));
         }
         
         $route->format = "json";
+        $params->result = $result;
         return array('content'=>$params);
     }
     
