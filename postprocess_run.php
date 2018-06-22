@@ -18,7 +18,7 @@ require "offsetfeed.php";
 require "trimfeedstart.php";
 require "mergefeeds.php";
 require "removeresets.php";
-
+require "downsample.php";
 $redis = new Redis();
 $connected = $redis->connect("127.0.0.1");
 
@@ -49,6 +49,7 @@ function process($processitem) {
     if ($processitem->process=="offsetfeed") $result = offsetfeed($dir,$processitem);
     if ($processitem->process=="mergefeeds") $result = mergefeeds($dir,$processitem);
     if ($processitem->process=="removeresets") $result = removeresets($dir,$processitem);
+    if ($processitem->process=="downsample") $result = downsample($dir,$processitem);
 }
 
 //function updatetimevalue($id,$time,$value){

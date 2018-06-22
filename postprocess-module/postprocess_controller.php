@@ -9,9 +9,9 @@ function postprocess_controller()
     $result = false;
     $route->format = "text";
     
-    $server1 = "";
-    $server2 = "";
-    $authkey = "";
+    $server1 = "http://localhost:8080";
+    $server2 = "http://localhost:8082";
+    $authkey = "7oW92ZK5nXDbBZCcpv";
 
     include "Modules/feed/feed_model.php";
     $feed = new Feed($mysqli,$redis,$feed_settings);
@@ -59,6 +59,11 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "maxrate"=>array("type"=>"value", "short"=>"Max accumulation rate:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+        ),
+        "downsample"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to downsample:"),
+            "interval"=>array("type"=>"value", "short"=>"Downsample interval:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
         )
     );
 
@@ -177,7 +182,7 @@ function postprocess_controller()
                 // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
                 $c = $feed->create($session['userid'],$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'),$server);
                 if (!$c['success'])
-                    return array('content'=>"feed could not be created");
+                    return array('content'=>"feed could not be created: ".$c['message']);
                     
                 // replace new feed name with its id if successfully created
                 $params->$key = $c['feedid'];
