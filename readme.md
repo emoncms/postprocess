@@ -22,4 +22,4 @@ Use the default settings
 
 Run the background script with:
 
-    sudo php /home/pi/postprocess/postprocess.php
+    sudo php /home/pi/postprocess/postprocess_run.php
