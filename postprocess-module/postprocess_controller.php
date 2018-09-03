@@ -5,11 +5,15 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $homedir,$session,$route,$mysqli,$redis,$feed_settings;
+    global $log,$homedir,$session,$route,$mysqli,$redis,$feed_settings;
     if (!isset($homedir)) $homedir = "/home/pi";
     
     $result = false;
     $route->format = "text";
+
+
+    include "Modules/postprocess/postprocess_model.php";
+    $postprocess = new PostProcess($mysqli);
 
     include "Modules/feed/feed_model.php";
     $feed = new Feed($mysqli,$redis,$feed_settings);
@@ -84,14 +88,19 @@ function postprocess_controller()
     if ($route->action == "list" && $session['write']) {
         
         $userid = $session['userid'];
-        $processlist = json_decode($redis->get("postprocesslist:$userid"));
-        if ($processlist==null) $processlist = array();
         
-        $processlistout = array();
+        $processlist = $postprocess->get($userid);
+        
+        if ($processlist==null) $processlist = array();
+        $processlist_long = array();
+        $processlist_valid = array();
         
         for ($i=0; $i<count($processlist); $i++) {
             $valid = true;
-            $process = $processlist[$i]->process;
+            
+            $item = json_decode(json_encode($processlist[$i]));
+            
+            $process = $item->process;
             if (isset($processes[$process])) {
                 foreach ($processes[$process] as $key=>$option) 
                 {
@@ -105,7 +114,8 @@ function postprocess_controller()
                             $f['interval'] = $meta->interval;
                             $f['npoints'] = $meta->npoints;
                             $f['id'] = (int) $f['id'];
-                            $processlist[$i]->$key = $f;
+                            
+                            $item->$key = $f;
                         } else {
                             $valid = false;
                         }
@@ -115,14 +125,15 @@ function postprocess_controller()
                 $valid = false;
             }
             
-            if ($valid) $processlistout[] = $processlist[$i];
+            if ($valid) { 
+                $processlist_long[] = $item;
+                $processlist_valid[] = $processlist[$i];
+            }
         }
         
-        if (json_encode($processlistout)!=json_encode($processlist)) {
-            $redis->set("postprocesslist:$userid",json_encode($processlistout));
-        }
+        $postprocess->set($userid,$processlist_valid);
         
-        $result = $processlistout;
+        $result = $processlist_long;
     
         $route->format = "json";
     }
@@ -186,13 +197,13 @@ function postprocess_controller()
         // If we got this far the input parameters where valid.
         
         $userid = $session['userid'];
-        $processlist = json_decode($redis->get("postprocesslist:$userid"));
+        $processlist = $postprocess->get($userid);
         if ($processlist==null) $processlist = array();
         
         $params->process = $process;
         $processlist[] = $params;
         
-        $redis->set("postprocesslist:$userid",json_encode($processlist));
+        $postprocess->set($userid,$processlist);
         $redis->lpush("postprocessqueue",json_encode($params));
         
          // -----------------------------------------------------------------
@@ -247,7 +258,7 @@ function postprocess_controller()
         // If we got this far the input parameters where valid.
         
         $userid = $session['userid'];
-        $processlist = json_decode($redis->get("postprocesslist:$userid"));
+        $processlist = $postprocess->get($userid);
         if ($processlist==null) $processlist = array();
         
         $params->process = $process;
