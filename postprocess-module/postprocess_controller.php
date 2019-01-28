@@ -65,7 +65,14 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "maxrate"=>array("type"=>"value", "short"=>"Max accumulation rate:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
-        )
+        ),
+        "liquidorairflow_tokwh"=>array(
+            "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
+            "flow"=>array("type"=>"feed", "engine"=>5, "short"=>"flow in m3/h"),
+            "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
+            "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+        )    
     );
 
     // -------------------------------------------------------------------------
@@ -287,6 +294,39 @@ function postprocess_controller()
         
         $route->format = "json";
         return array('content'=>$params);
+    }
+    
+    if ($route->action == 'getlog') {
+        $route->format = "text";
+        ob_start();
+        $log_filename = "$homedir/data/postprocess.log";
+        $handle = fopen($log_filename, "r");
+        $lines = 200;
+        $linecounter = $lines;
+        $pos = -2;
+        $beginning = false;
+        $text = array();
+        while ($linecounter > 0) {
+          $t = " ";
+          while ($t != "\n") {
+            if(!empty($handle) && fseek($handle, $pos, SEEK_END) == -1) {
+              $beginning = true;
+              break;
+              }
+            if(!empty($handle)) $t = fgetc($handle);
+            $pos --;
+          }
+          $linecounter --;
+          if ($beginning) {
+            rewind($handle);
+          }
+          $text[$lines-$linecounter-1] = fgets($handle);
+          if ($beginning) break;
+        }
+        foreach (array_reverse($text) as $line) {
+          echo $line;
+        }
+        $result = trim(ob_get_clean());
     }
     
     return array('content'=>$result, 'fullwidth'=>false);

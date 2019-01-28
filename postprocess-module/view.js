@@ -27,9 +27,31 @@ $("#process_select").change(function(){
        
        options += "<b>"+processes[process][z]["short"]+"</b><br>";
        if (processes[process][z]["type"]=="feed") {
-           options += "<select class='process_option' option="+z+">";
-           for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
-           options += "</select><br>";
+            options += "<select class='process_option' option="+z+">";
+            //for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
+            
+            var datatype = 1;  // 0:UNDEFINED, 1:REALTIME, 2:DAILY, 3:HISTOGRAM
+            var feedgroups = [];
+            for (n in feeds) {
+                if (feeds[n].datatype == datatype) {
+                    if (parseInt(feeds[n].engine) == 7) continue; // Dont list virtual feed
+                    var group = (feeds[n].tag === null ? "NoGroup" : feeds[n].tag);
+                    if (group!="Deleted") {
+                        if (!feedgroups[group]) feedgroups[group] = []
+                        feedgroups[group].push(feeds[n]);
+                    }
+                }
+            }
+            var out = "<option value=-1>CHOOSE FEED:</option>";
+            for (n in feedgroups) {
+                out += "<optgroup label='"+n+"'>";
+                for (p in feedgroups[n]) {
+                     out += "<option value="+feedgroups[n][p]['id']+">"+feedgroups[n][p].name+"</option>";
+                }
+            out += "</optgroup>";
+            }
+            options+=out;
+            options += "</select><br>";
        }
        
        if (processes[process][z]["type"]=="newfeed") {
@@ -138,20 +160,31 @@ function processlist_update()
             out += "<td>";
             var base_npoints = 0;
             var out_npoints = 0;
+            //number of feeds in the postprocessing
+            var nbf=0;
+            var feeds_npoints=[];
             for (var key in processes[process]) {
                 out += "<div style='width:250px; float:left'><b>"+key+":</b>";
                 if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed") 
                     out += processlist[z][key].id+":"+processlist[z][key].name;
+                //if value, should print it
+                if (processes[process][key].type=="value")
+                    out += processlist[z][key];
                 out += "</div>";
                 
+                //rework by alexandre CUER - not totally satisfying anyway
                 if (processes[process][key].type=="feed") {
-                    base_npoints = processlist[z][key].npoints;
+                    //base_npoints = processlist[z][key].npoints;
+                    feeds_npoints[nbf]=processlist[z][key].npoints;
+                    nbf+=1;
                 }
-                
+
                 if (processes[process][key].type=="newfeed") {
                     out_npoints = processlist[z][key].npoints;
                 }
             }
+            //console.log(feeds_npoints);
+            base_npoints=Math.min(...feeds_npoints);
             out += "</td>";
             
             var points_behind = base_npoints - out_npoints;
