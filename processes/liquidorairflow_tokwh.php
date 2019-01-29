@@ -52,7 +52,7 @@ function liquidorairflow_tokwh($dir,$processitem)
     $kwh = 0;
     fseek($out_fh,$out_meta->npoints*4);
     if($out_meta->npoints>0) {
-        $tmp=unpack("f",fread($out_fh,4);
+        $tmp=unpack("f",fread($out_fh,4));
         $kwh = $tmp[1];
     }
     $buffer="";

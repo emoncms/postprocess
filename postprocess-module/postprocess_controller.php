@@ -298,35 +298,37 @@ function postprocess_controller()
     
     if ($route->action == 'getlog') {
         $route->format = "text";
-        ob_start();
         $log_filename = "$homedir/data/postprocess.log";
-        $handle = fopen($log_filename, "r");
-        $lines = 200;
-        $linecounter = $lines;
-        $pos = -2;
-        $beginning = false;
-        $text = array();
-        while ($linecounter > 0) {
-          $t = " ";
-          while ($t != "\n") {
-            if(!empty($handle) && fseek($handle, $pos, SEEK_END) == -1) {
-              $beginning = true;
-              break;
+        if (file_exists($log_filename)) {
+          ob_start();
+          $handle = fopen($log_filename, "r");
+          $lines = 200;
+          $linecounter = $lines;
+          $pos = -2;
+          $beginning = false;
+          $text = array();
+          while ($linecounter > 0) {
+            $t = " ";
+            while ($t != "\n") {
+              if(!empty($handle) && fseek($handle, $pos, SEEK_END) == -1) {
+                $beginning = true;
+                break;
               }
-            if(!empty($handle)) $t = fgetc($handle);
-            $pos --;
+              if(!empty($handle)) $t = fgetc($handle);
+              $pos --;
+            }
+            $linecounter --;
+            if ($beginning) {
+              rewind($handle);
+            }
+            $text[$lines-$linecounter-1] = fgets($handle);
+            if ($beginning) break;
           }
-          $linecounter --;
-          if ($beginning) {
-            rewind($handle);
+          foreach (array_reverse($text) as $line) {
+            echo $line;
           }
-          $text[$lines-$linecounter-1] = fgets($handle);
-          if ($beginning) break;
-        }
-        foreach (array_reverse($text) as $line) {
-          echo $line;
-        }
-        $result = trim(ob_get_clean());
+          $result = trim(ob_get_clean());
+        } else $result="no logging yet available";
     }
     
     return array('content'=>$result, 'fullwidth'=>false);
