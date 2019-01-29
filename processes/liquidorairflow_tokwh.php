@@ -29,7 +29,7 @@ function liquidorairflow_tokwh($dir,$processitem)
         return false;
     }
     
-    if (!$out_fh = @fopen($dir.$out.".dat", 'ab')) {
+    if (!$out_fh = @fopen($dir.$out.".dat", 'c+')) {
         echo "ERROR: could not open $dir $out.dat\n";
         return false;
     }
@@ -50,12 +50,16 @@ function liquidorairflow_tokwh($dir,$processitem)
     $writing_end_time=$compute_meta->writing_end_time;
     $interval=$out_meta->interval;
     $kwh = 0;
-    fseek($out_fh,$out_meta->npoints*4);
+    
     if($out_meta->npoints>0) {
-        fseek($out_fh,($out_meta->npoints-1)*4);
+        print("NOTICE : file not empty \n");
+        $pos_last=($out_meta->npoints-1)*4;
+        print("NOTICE : reading last previously processed value in file position $pos_last \n");
+        fseek($out_fh,$pos_last);
         $tmp=unpack("f",fread($out_fh,4));
         $kwh = $tmp[1];
-    }
+        print("NOTICE : accumulation will resume at last previously processed value $kwh \n");
+    } else fseek($out_fh,0);
     $buffer="";
     for ($time=$writing_start_time;$time<$writing_end_time;$time+=$interval){
         $pos_flow = floor(($time - $flow_meta->start_time) / $flow_meta->interval);
