@@ -52,10 +52,11 @@ function powertokwh($dir,$processitem)
     $joules = 0;
     $power = 0;
     fseek($if,$om->npoints*4);
-    if ($om->npoints>0) fseek($of,($om->npoints-1)*4);
-    
-    $tmp = unpack("f",fread($of,4));
-    $wh = $tmp[1]*1000.0;
+    if ($om->npoints>0) {
+        fseek($of,($om->npoints-1)*4);
+        $tmp = unpack("f",fread($of,4));
+        $wh = $tmp[1]*1000.0;
+    }
     
     for ($n=$om->npoints; $n<$im->npoints; $n++) {
         $tmp = unpack("f",fread($if,4));
