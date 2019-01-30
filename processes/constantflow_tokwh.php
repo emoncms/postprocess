@@ -73,8 +73,8 @@ function constantflow_tokwh($dir,$processitem)
             $value_text = $text_tmp[1];
         }
         
-        //if we face one or more NAN value among flow,tint,text, we should not make any calculation and $kwh should remain the same
-        if(!is_nan($value_flow) && !is_nan($value_tint) && !is_nan($value_text)){
+        //if we face one or more NAN value among tint,text, we should not make any calculation and $kwh should remain the same
+        if(!is_nan($value_tint) && !is_nan($value_text)){
             $kwh+=0.001*$vhc*$flow*($value_tint-$value_text)*$out_meta->interval/3600;
         }
         //print("$kwh/");
