@@ -72,7 +72,14 @@ function postprocess_controller()
             "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
             "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
-        )    
+        ),
+        "constantflow_tokwh"=>array(
+            "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
+            "flow"=>array("type"=>"value", "short"=>"constant flow in m3/h"),
+            "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
+            "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+        )
     );
 
     // -------------------------------------------------------------------------
