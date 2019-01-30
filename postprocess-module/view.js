@@ -162,7 +162,9 @@ function processlist_update()
             var out_npoints = 0;
             //number of feeds in the postprocessing
             var nbf=0;
-            var feeds_npoints=[];
+            var fstart_time=[];
+            var ftime=[];
+            var finterval=[];
             for (var key in processes[process]) {
                 out += "<div style='width:250px; float:left'><b>"+key+":</b>";
                 if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed") 
@@ -175,7 +177,9 @@ function processlist_update()
                 //rework by alexandre CUER - not totally satisfying anyway
                 if (processes[process][key].type=="feed") {
                     //base_npoints = processlist[z][key].npoints;
-                    feeds_npoints[nbf]=processlist[z][key].npoints;
+                    fstart_time[nbf]=processlist[z][key].start_time;
+                    ftime[nbf]=processlist[z][key].time;
+                    finterval[nbf]=processlist[z][key].interval;
                     nbf+=1;
                 }
 
@@ -184,7 +188,7 @@ function processlist_update()
                 }
             }
             //console.log(feeds_npoints);
-            base_npoints=Math.min(...feeds_npoints);
+            base_npoints=Math.round((Math.min(...ftime)-Math.max(...fstart_time))/Math.max(...finterval));
             out += "</td>";
             
             var points_behind = base_npoints - out_npoints;

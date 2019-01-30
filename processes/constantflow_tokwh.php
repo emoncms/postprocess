@@ -61,7 +61,8 @@ function constantflow_tokwh($dir,$processitem)
         
         $pos_tint = floor(($time - $tint_meta->start_time) / $tint_meta->interval);
         $pos_text = floor(($time - $text_meta->start_time) / $text_meta->interval);
-
+        $value_tint=NAN;
+        $value_text=NAN;
         if ($pos_tint>=0 && $pos_tint<$tint_meta->npoints) {
             fseek($tint_fh,$pos_tint*4);
             $tint_tmp = unpack("f",fread($tint_fh,4));

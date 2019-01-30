@@ -65,7 +65,9 @@ function liquidorairflow_tokwh($dir,$processitem)
         $pos_flow = floor(($time - $flow_meta->start_time) / $flow_meta->interval);
         $pos_tint = floor(($time - $tint_meta->start_time) / $tint_meta->interval);
         $pos_text = floor(($time - $text_meta->start_time) / $text_meta->interval);
-
+        $value_flow=NAN;
+        $value_tint=NAN;
+        $value_text=NAN;
         if ($pos_flow>=0 && $pos_flow<$flow_meta->npoints) {
             fseek($flow_fh,$pos_flow*4);
             $flow_tmp = unpack("f",fread($flow_fh,4));
