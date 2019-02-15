@@ -79,6 +79,10 @@ function postprocess_controller()
             "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
             "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+        ),
+        "basic_formula"=>array(
+            "formula"=>array("type"=>"formula", "short"=>"Enter your formula (e.g. f1+2*f2-f3/12 if you work on feeds 1,2,3) - brackets not implemented"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name :")
         )
     );
 
@@ -132,6 +136,39 @@ function postprocess_controller()
                             $item->$key = $f;
                         } else {
                             $valid = false;
+                        }
+                    }
+                    
+                    if ($option['type']=="formula"){
+                        $formula=$processlist[$i]->$key;
+                        $f=[];
+                        $f['expression']=$formula;
+                        //we catch feed numbers in the formula
+                        $feed_ids=[];
+                        while(preg_match("/(f\d+)/",$formula,$b)){
+                            $feed_ids[]=substr($b[0],1,strlen($b[0])-1);
+                            $formula=str_replace($b[0],"",$formula);
+                        }
+                        $all_intervals=[];
+                        $all_start_times=[];
+                        $all_ending_times=[];
+                        //we check feeds existence and stores all usefull metas
+                        foreach($feed_ids as $id) {
+                            if ($feed->exist((int)$id)){
+                                $m=$feed->get_meta($id);
+                                $all_intervals[]=$m->interval;
+                                $all_start_times[]=$m->start_time;
+                                $all_ending_times[]=$feed->get_timevalue($id)['time'];
+                            } else {
+                                $valid = false;
+                            }
+                        }
+                        if ($valid){
+                            $f['interval'] = max($all_intervals);
+                            $f['start_time']= max($all_start_times);
+                            $f['time']= min($all_ending_times);
+                            
+                            $item->$key = $f;
                         }
                     }
                 }
