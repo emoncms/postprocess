@@ -103,6 +103,11 @@ function postprocess_controller()
     // -------------------------------------------------------------------------
     // PROCESS LIST
     // -------------------------------------------------------------------------
+    if ($route->action == "list2" && $session['write']) {
+        $route->format = "json";
+        return $postprocess->get($session['userid']);
+    }
+    
     if ($route->action == "list" && $session['write']) {
         
         $userid = $session['userid'];
@@ -127,12 +132,14 @@ function postprocess_controller()
                         if ($feed->exist((int)$id)) {
                             $f = $feed->get($id);
                             if ($f['userid']!=$session['userid']) return false;
-                            $meta = $feed->get_meta($id);
-                            $f['start_time'] = $meta->start_time;
-                            $f['interval'] = $meta->interval;
-                            $f['npoints'] = $meta->npoints;
-                            $f['id'] = (int) $f['id'];
-                            
+                            if ($meta = $feed->get_meta($id)) {
+                                $f['start_time'] = $meta->start_time;
+                                $f['interval'] = $meta->interval;
+                                $f['npoints'] = $meta->npoints;
+                                $f['id'] = (int) $f['id'];
+                            } else {
+                                $valid = false;
+                            }
                             $item->$key = $f;
                         } else {
                             $valid = false;
