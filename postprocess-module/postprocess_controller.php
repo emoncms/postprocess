@@ -102,12 +102,7 @@ function postprocess_controller()
 
     // -------------------------------------------------------------------------
     // PROCESS LIST
-    // -------------------------------------------------------------------------
-    if ($route->action == "list2" && $session['write']) {
-        $route->format = "json";
-        return $postprocess->get($session['userid']);
-    }
-    
+    // -------------------------------------------------------------------------    
     if ($route->action == "list" && $session['write']) {
         
         $userid = $session['userid'];
