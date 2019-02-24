@@ -137,6 +137,8 @@ function postprocess_controller()
                                 $f['interval'] = $meta->interval;
                                 $f['npoints'] = $meta->npoints;
                                 $f['id'] = (int) $f['id'];
+                                $timevalue = $feed->get_timevalue($id);
+                                $f['time'] = $timevalue["time"];
                             } else {
                                 $valid = false;
                             }
@@ -148,24 +150,25 @@ function postprocess_controller()
                     
                     if ($option['type']=="formula"){
                         $formula=$processlist[$i]->$key;
-                        $f=[];
+                        $f=array();
                         $f['expression']=$formula;
                         //we catch feed numbers in the formula
-                        $feed_ids=[];
+                        $feed_ids=array();
                         while(preg_match("/(f\d+)/",$formula,$b)){
                             $feed_ids[]=substr($b[0],1,strlen($b[0])-1);
                             $formula=str_replace($b[0],"",$formula);
                         }
-                        $all_intervals=[];
-                        $all_start_times=[];
-                        $all_ending_times=[];
+                        $all_intervals=array();
+                        $all_start_times=array();
+                        $all_ending_times=array();
                         //we check feeds existence and stores all usefull metas
                         foreach($feed_ids as $id) {
                             if ($feed->exist((int)$id)){
                                 $m=$feed->get_meta($id);
                                 $all_intervals[]=$m->interval;
                                 $all_start_times[]=$m->start_time;
-                                $all_ending_times[]=$feed->get_timevalue($id)['time'];
+                                $timevalue = $feed->get_timevalue($id);
+                                $all_ending_times[] = $timevalue["time"];
                             } else {
                                 $valid = false;
                             }
