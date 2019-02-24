@@ -27,9 +27,31 @@ $("#process_select").change(function(){
        
        options += "<b>"+processes[process][z]["short"]+"</b><br>";
        if (processes[process][z]["type"]=="feed") {
-           options += "<select class='process_option' option="+z+">";
-           for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
-           options += "</select><br>";
+            options += "<select class='process_option' option="+z+">";
+            //for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
+            
+            var datatype = 1;  // 0:UNDEFINED, 1:REALTIME, 2:DAILY, 3:HISTOGRAM
+            var feedgroups = [];
+            for (n in feeds) {
+                if (feeds[n].datatype == datatype) {
+                    if (parseInt(feeds[n].engine) == 7) continue; // Dont list virtual feed
+                    var group = (feeds[n].tag === null ? "NoGroup" : feeds[n].tag);
+                    if (group!="Deleted") {
+                        if (!feedgroups[group]) feedgroups[group] = []
+                        feedgroups[group].push(feeds[n]);
+                    }
+                }
+            }
+            var out = "<option value=-1>CHOOSE FEED:</option>";
+            for (n in feedgroups) {
+                out += "<optgroup label='"+n+"'>";
+                for (p in feedgroups[n]) {
+                     out += "<option value="+feedgroups[n][p]['id']+">"+feedgroups[n][p].name+"</option>";
+                }
+            out += "</optgroup>";
+            }
+            options+=out;
+            options += "</select><br>";
        }
        
        if (processes[process][z]["type"]=="newfeed") {
@@ -40,8 +62,12 @@ $("#process_select").change(function(){
        if (processes[process][z]["type"]=="value") {
            options += "<input class='process_option' option="+z+" type='text' /><br>";
        }
+       
+       if (processes[process][z]["type"]=="formula") {
+           options += "<input class='process_option' option="+z+" type='text' /><br>";  
+       }
    }
-   $("#process_options").html(options);
+   $("#process_options").html(options); 
    validate();
 });
 
@@ -78,6 +104,19 @@ function validate()
                 $(".process_option[option="+z+"]").css("background-color","#eeffee");
             }
         }
+        
+        if (processes[process][z]["type"]=="formula") {
+            $(".process_option[option="+z+"]").css("width","400px");
+            var formula = $(".process_option[option="+z+"]").val();
+            var regex1 = /[^-\+\*\/\df]/;
+            var regex2 = /f/;
+            if (formula.match(regex1) || !formula.match(regex2)){
+                $(".process_option[option="+z+"]").css("background-color","#ffeeee");
+                valid = false;
+            } else {
+                $(".process_option[option="+z+"]").css("background-color","#eeffee");
+            }
+        }   
     }
     
     if (valid) $("#create").show(); else $("#create").hide();
@@ -138,20 +177,53 @@ function processlist_update()
             out += "<td>";
             var base_npoints = 0;
             var out_npoints = 0;
+            
+            var fstart_time=[];
+            var ftime=[];
+            var finterval=[];
             for (var key in processes[process]) {
-                out += "<div style='width:250px; float:left'><b>"+key+":</b>";
-                if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed") 
-                    out += processlist[z][key].id+":"+processlist[z][key].name;
-                out += "</div>";
-                
-                if (processes[process][key].type=="feed") {
-                    base_npoints = processlist[z][key].npoints;
+                //if formula, should show it but in a wider div
+                //formula details are reduced to its expression
+                if (processes[process][key].type=="formula"){
+                    out += "<div style='width:500px; float:left'><b>"+key+":</b>";
+                    out += processlist[z][key].expression+"</div>";
+                    //we should also extract the feeds from the formula
+                    var myformula=processlist[z][key].expression;
+                    var formula_feeds=[];
+                    var delimiter=/f/;
+                    while (delimiter.test(myformula)){
+                        var regex = /(f\d+)/;
+                        var found = myformula.match(regex);
+                        var found_regex = new RegExp(found[0],'g');
+                        myformula=myformula.replace(found_regex,"");
+                        formula_feeds.push(found[0].substr(1,found[0].length-1));
+                    }
+                    //console.log("found:"+formula_feeds+"and formula is :"+myformula);
+                //feed details are id and name
+                } else {
+                    out += "<div style='width:250px; float:left'><b>"+key+":</b>";
+                    if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed") 
+                        out += processlist[z][key].id+":"+processlist[z][key].name;
+                    //if value, should print it
+                    if (processes[process][key].type=="value")
+                        out += processlist[z][key];
+                    out += "</div>";
                 }
                 
+                //rework by alexandre CUER
+                if (processes[process][key].type=="feed" || processes[process][key].type=="formula") {
+                    //base_npoints = processlist[z][key].npoints;
+                    fstart_time.push(processlist[z][key].start_time);
+                    ftime.push(processlist[z][key].time);
+                    finterval.push(processlist[z][key].interval);
+                }
+
                 if (processes[process][key].type=="newfeed") {
                     out_npoints = processlist[z][key].npoints;
                 }
             }
+            //console.log(fstart_time);
+            base_npoints=Math.round((Math.min(...ftime)-Math.max(...fstart_time))/Math.max(...finterval));
             out += "</td>";
             
             var points_behind = base_npoints - out_npoints;
@@ -184,6 +256,10 @@ $("#processlist").on("click",".runprocess",function(){
         
         if (processes[process][key].type=="value") {
             params[key] = processlist[z][key];
+        }
+        
+        if (processes[process][key].type=="formula") {
+            params[key] = processlist[z][key].expression;
         }
     }
 

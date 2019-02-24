@@ -65,6 +65,24 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "maxrate"=>array("type"=>"value", "short"=>"Max accumulation rate:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+        ),
+        "liquidorairflow_tokwh"=>array(
+            "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
+            "flow"=>array("type"=>"feed", "engine"=>5, "short"=>"flow in m3/h"),
+            "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
+            "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+        ),
+        "constantflow_tokwh"=>array(
+            "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
+            "flow"=>array("type"=>"value", "short"=>"constant flow in m3/h"),
+            "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
+            "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+        ),
+        "basic_formula"=>array(
+            "formula"=>array("type"=>"formula", "short"=>"Enter your formula (e.g. f1+2*f2-f3/12 if you work on feeds 1,2,3) - brackets not implemented"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name :")
         )
     );
 
@@ -118,6 +136,39 @@ function postprocess_controller()
                             $item->$key = $f;
                         } else {
                             $valid = false;
+                        }
+                    }
+                    
+                    if ($option['type']=="formula"){
+                        $formula=$processlist[$i]->$key;
+                        $f=[];
+                        $f['expression']=$formula;
+                        //we catch feed numbers in the formula
+                        $feed_ids=[];
+                        while(preg_match("/(f\d+)/",$formula,$b)){
+                            $feed_ids[]=substr($b[0],1,strlen($b[0])-1);
+                            $formula=str_replace($b[0],"",$formula);
+                        }
+                        $all_intervals=[];
+                        $all_start_times=[];
+                        $all_ending_times=[];
+                        //we check feeds existence and stores all usefull metas
+                        foreach($feed_ids as $id) {
+                            if ($feed->exist((int)$id)){
+                                $m=$feed->get_meta($id);
+                                $all_intervals[]=$m->interval;
+                                $all_start_times[]=$m->start_time;
+                                $all_ending_times[]=$feed->get_timevalue($id)['time'];
+                            } else {
+                                $valid = false;
+                            }
+                        }
+                        if ($valid){
+                            $f['interval'] = max($all_intervals);
+                            $f['start_time']= max($all_start_times);
+                            $f['time']= min($all_ending_times);
+                            
+                            $item->$key = $f;
                         }
                     }
                 }
@@ -287,6 +338,41 @@ function postprocess_controller()
         
         $route->format = "json";
         return array('content'=>$params);
+    }
+    
+    if ($route->action == 'getlog') {
+        $route->format = "text";
+        $log_filename = "$homedir/data/postprocess.log";
+        if (file_exists($log_filename)) {
+          ob_start();
+          $handle = fopen($log_filename, "r");
+          $lines = 200;
+          $linecounter = $lines;
+          $pos = -2;
+          $beginning = false;
+          $text = array();
+          while ($linecounter > 0) {
+            $t = " ";
+            while ($t != "\n") {
+              if(!empty($handle) && fseek($handle, $pos, SEEK_END) == -1) {
+                $beginning = true;
+                break;
+              }
+              if(!empty($handle)) $t = fgetc($handle);
+              $pos --;
+            }
+            $linecounter --;
+            if ($beginning) {
+              rewind($handle);
+            }
+            $text[$lines-$linecounter-1] = fgets($handle);
+            if ($beginning) break;
+          }
+          foreach (array_reverse($text) as $line) {
+            echo $line;
+          }
+          $result = trim(ob_get_clean());
+        } else $result="no logging yet available";
     }
     
     return array('content'=>$result, 'fullwidth'=>false);
