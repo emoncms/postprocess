@@ -20,8 +20,10 @@ function powertokwh($dir,$processitem)
     }
 
     $im = getmeta($dir,$input);
+    print "input meta: ".json_encode($im)."\n";
+    
     $om = getmeta($dir,$output);
-
+    print "output meta: ".json_encode($om)."\n";
     /*
     if ($im->interval != $om->interval) {
         print "feed intervals do not match\n";
@@ -58,21 +60,34 @@ function powertokwh($dir,$processitem)
         $wh = $tmp[1]*1000.0;
     }
     
+    $spurious_value_count = 0;
+    
     for ($n=$om->npoints; $n<$im->npoints; $n++) {
         $tmp = unpack("f",fread($if,4));
         
         if (!is_nan($tmp[1])) $power = 1*$tmp[1];
         
-        // $joules += $power * $im->interval;
-        // $wh += floor($joules / 3600.0);
-        // $joules = $joules % 3600;
-        
-        $wh += ($power * $im->interval) / 3600.0;
-        
-        $buffer .= pack("f",$wh*0.001);
+        // filter spurious power values +-1MW
+        if ($power>-1000000.0 && $power<1000000.0) { 
+            
+            // $joules += $power * $im->interval;
+            // $wh += floor($joules / 3600.0);
+            // $joules = $joules % 3600;
+            
+            $wh += ($power * $im->interval) / 3600.0;
+            $buffer .= pack("f",$wh*0.001);
+        } else {
+            $spurious_value_count++;
+        }
     }
     
     fwrite($of,$buffer);
+    
+    if ($spurious_value_count>0) {
+        print "-------------------------------------------------------";
+        print "Found and filtered $spurious_value_count values +-1MW\n";
+        print "-------------------------------------------------------";
+    }
     
     print "bytes written: ".strlen($buffer)."\n";
     fclose($of);

@@ -14,17 +14,17 @@ pre {
     overflow-x: hidden;
 }
 </style>
-<table class="table table-hover">
-  <tr><td colspan=2><h2>Post Processor</h2></td></tr>
-<tr>
-  <td><h3>Logger</h3><p>on file /home/pi/data/postprocess.log</p></td>
-  <td class="buttons">
-    <button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off"><?php echo _('Auto refresh'); ?></button>
-  </td>
-</tr>
-<tr><td colspan=2><pre id="logreply-bound"><div id="logreply"></div></pre></td></tr>
-</table>
+
+<h2>Post Processor</h2>
 <p>Rather than process inputs as data arrives in emoncms such as calculating cumulative kWh data from power data with the power to kWh input process, this module can be used to do these kind of processing steps after having recorded base data such as power data for some time. This removes the reliance on setting up everything right in the first instance providing the flexibility to recalculate processed feeds at a later date.</p>
+
+<hr>
+<button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
+<h3>Logger</h3>
+<p>on file <?php global $homedir; echo $homedir; ?>/data/postprocess.log</p>
+<pre id="logreply-bound"><div id="logreply"></div></pre>
+
+<hr>
 
 <h3>My processes</h3>
 
