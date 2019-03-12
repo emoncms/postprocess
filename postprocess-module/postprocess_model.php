@@ -25,7 +25,7 @@ class PostProcess
     public function set($userid,$data)
     {
         $userid = (int) $userid;
-        // $data = preg_replace('/[^\w\s-.",:#{}\[\]]/','',$data);
+        // $data = preg_replace('/[^\w\s\-.",:#{}\[\]]/','',$data);
         $data = json_encode($data);
         
         if ($this->get($userid)===false) {
