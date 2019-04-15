@@ -5,8 +5,7 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $log,$homedir,$session,$route,$mysqli,$redis,$feed_settings;
-    if (!isset($homedir)) $homedir = "/home/pi";
+    global $log,$homedir,$linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings;
     
     $result = false;
     $route->format = "text";
@@ -335,7 +334,8 @@ function postprocess_controller()
         // -----------------------------------------------------------------
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------
-        $update_script = "$homedir/postprocess/postprocess.sh";
+        if (!$linked_modules_dir) $linked_modules_dir = $homedir;
+        $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
         $update_logfile = "$homedir/data/postprocess.log";
         $redis->rpush("service-runner","$update_script>$update_logfile");
         $result = "service-runner trigger sent";

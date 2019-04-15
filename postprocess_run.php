@@ -1,10 +1,11 @@
 <?php
+// Get script location
+list($scriptPath) = get_included_files();
+$basedir = str_replace("/postprocess_run.php","",$scriptPath);
 
 define('EMONCMS_EXEC', 1);
 chdir("/var/www/emoncms");
 require "process_settings.php";
-if (!isset($homedir)) $homedir = "/home/pi";
-$basedir = "$homedir/postprocess/";
 $dir = $feed_settings["phpfina"]["datadir"];
 chdir($basedir);
 
@@ -16,7 +17,7 @@ require "request.php";
 
 // Auto load processes
 $processes = array();
-$files = scandir($basedir."processes");
+$files = scandir($basedir."/processes");
 for ($i=2; $i<count($files); $i++) {
 
     // compile process list
@@ -24,7 +25,7 @@ for ($i=2; $i<count($files); $i++) {
     $processes[] = $process;
     
     // full file location and name
-    $process_file = $basedir."processes/".$process.".php";
+    $process_file = $basedir."/processes/".$process.".php";
     
     // Include the process file and check that process function exists
     require $process_file;
