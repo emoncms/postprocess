@@ -1,6 +1,6 @@
 <?php
 
-    $menu['sidebar']['setup'][] = array(
+    $menu['setup'][] = array(
         'text' => _("Post Process"),
         'path' => 'postprocess',
         'icon' => 'spinner11'
