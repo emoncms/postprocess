@@ -225,7 +225,7 @@ function postprocess_controller()
            }
            
            if ($option['type']=="newfeed") {
-               $newfeedname = preg_replace('/[^\w\s-:]/','',$params->$key);
+               $newfeedname = preg_replace('/[^\w\s\-:]/','',$params->$key);
                if ($params->$key=="")
                    return array('content'=>"new feed name is blank");
                if ($newfeedname!=$params->$key)
