@@ -5,7 +5,7 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $log,$homedir,$linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings;
+    global $log,$homedir,$linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings, $log_location;
     
     $result = false;
     $route->format = "text";
@@ -265,7 +265,7 @@ function postprocess_controller()
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------        
         $update_script = "$homedir/postprocess/postprocess.sh";
-        $update_logfile = "$homedir/data/postprocess.log";
+        $update_logfile = "$log_location/postprocess.log";
         $redis->rpush("service-runner","$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
@@ -336,7 +336,7 @@ function postprocess_controller()
         // -----------------------------------------------------------------
         if (!$linked_modules_dir) $linked_modules_dir = $homedir;
         $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = "$homedir/data/postprocess.log";
+        $update_logfile = "$log_location/postprocess.log";
         $redis->rpush("service-runner","$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
@@ -347,7 +347,7 @@ function postprocess_controller()
     
     if ($route->action == 'getlog') {
         $route->format = "text";
-        $log_filename = "$homedir/data/postprocess.log";
+        $log_filename = "$log_location/postprocess.log";
         if (file_exists($log_filename)) {
           ob_start();
           $handle = fopen($log_filename, "r");
