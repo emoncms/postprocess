@@ -21,7 +21,7 @@ pre {
 <hr>
 <button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
 <h3>Logger</h3>
-<p>on file <?php global $homedir; echo $homedir; ?>/data/postprocess.log</p>
+<p>on file <?php global $log_location; echo "$log_location/postprocess.log"; ?></p>
 <pre id="logreply-bound"><div id="logreply"></div></pre>
 
 <hr>
