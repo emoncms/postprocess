@@ -5,7 +5,7 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $log,$homedir,$linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings, $log_location;
+    global $homedir,$linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings, $log_location;
     if (!$linked_modules_dir) $linked_modules_dir = "$homedir/modules";
     
     $result = false;
@@ -351,32 +351,7 @@ function postprocess_controller()
         $log_filename = "$log_location/postprocess.log";
         if (file_exists($log_filename)) {
           ob_start();
-          $handle = fopen($log_filename, "r");
-          $lines = 200;
-          $linecounter = $lines;
-          $pos = -2;
-          $beginning = false;
-          $text = array();
-          while ($linecounter > 0) {
-            $t = " ";
-            while ($t != "\n") {
-              if(!empty($handle) && fseek($handle, $pos, SEEK_END) == -1) {
-                $beginning = true;
-                break;
-              }
-              if(!empty($handle)) $t = fgetc($handle);
-              $pos --;
-            }
-            $linecounter --;
-            if ($beginning) {
-              rewind($handle);
-            }
-            $text[$lines-$linecounter-1] = fgets($handle);
-            if ($beginning) break;
-          }
-          foreach (array_reverse($text) as $line) {
-            echo $line;
-          }
+          passthru("tail -30 $log_filename")
           $result = trim(ob_get_clean());
         } else $result="no logging yet available";
     }
