@@ -350,7 +350,7 @@ function postprocess_controller()
         $log_filename = "$log_location/postprocess.log";
         if (file_exists($log_filename)) {
           ob_start();
-          passthru("tail -30 $log_filename")
+          passthru("tail -30 $log_filename");
           $result = trim(ob_get_clean());
         } else $result="no logging yet available";
     }
