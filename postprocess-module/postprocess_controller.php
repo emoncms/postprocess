@@ -5,7 +5,7 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $homedir,$linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings, $log_location;
+    global $linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings, $log_location;
     if (!$linked_modules_dir) $linked_modules_dir = "$homedir/modules";
     
     $result = false;
