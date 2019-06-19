@@ -29,7 +29,7 @@ function trimfeedstart($dir,$processitem)
     }
 
     if (!$if = @fopen($dir.$feedid.".dat", 'rb')) {
-        echo "ERROR: could not open $dir $feedid.dat\n";
+        echo "ERROR: could not open $dir$feedid.dat\n";
         return false;
     }
     
@@ -52,6 +52,7 @@ function trimfeedstart($dir,$processitem)
     fclose($of);
     
     $meta->start_time = $trimtime;
+    $meta->npoints = $length;
     createmeta($dir,$feedid,$meta);
     
     return true;
