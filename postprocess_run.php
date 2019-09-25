@@ -6,7 +6,7 @@ $basedir = str_replace("/postprocess_run.php","",$scriptPath);
 define('EMONCMS_EXEC', 1);
 chdir("/var/www/emoncms");
 require "process_settings.php";
-$dir = $feed_settings["phpfina"]["datadir"];
+$dir = $settings["feed"]["phpfina"]["datadir"];
 chdir($basedir);
 
 $fp = fopen("/tmp/postprocess-runlock", "w");
@@ -36,12 +36,12 @@ for ($i=2; $i<count($files); $i++) {
 
 if (!$redis_enabled) { echo "ERROR: Redis is not enabled"; die; }
 $redis = new Redis();
-$connected = $redis->connect($redis_server['host'], $redis_server['port']);
-if (!$connected) { echo "Can't connect to redis at ".$redis_server['host'].":".$redis_server['port']; die; }
-if (!empty($redis_server['prefix'])) $redis->setOption(Redis::OPT_PREFIX, $redis_server['prefix']);
-if (!empty($redis_server['auth'])) {
-    if (!$redis->auth($redis_server['auth'])) {
-        echo "Can't connect to redis at ".$redis_server['host'].", autentication failed"; die;
+$connected = $redis->connect($settings['redis']['host'], $settings['redis']['port']);
+if (!$connected) { echo "Can't connect to redis at ".$settings['redis']['host'].":".$settings['redis']['port']; die; }
+if (!empty($settings['redis']['prefix'])) $redis->setOption(Redis::OPT_PREFIX, $settings['redis']['prefix']);
+if (!empty($settings['redis']['auth'])) {
+    if (!$redis->auth($settings['redis']['auth'])) {
+        echo "Can't connect to redis at ".$settings['redis']['host'].", autentication failed"; die;
     }
 }
 

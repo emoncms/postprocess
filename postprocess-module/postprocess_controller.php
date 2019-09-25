@@ -5,7 +5,7 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $linked_modules_dir,$session,$route,$mysqli,$redis,$feed_settings, $log_location;
+    global $linked_modules_dir,$session,$route,$mysqli,$redis,$settings;
 
     $result = false;
     $route->format = "text";
@@ -15,7 +15,7 @@ function postprocess_controller()
     $postprocess = new PostProcess($mysqli);
 
     include "Modules/feed/feed_model.php";
-    $feed = new Feed($mysqli,$redis,$feed_settings);
+    $feed = new Feed($mysqli,$redis,$settings['feed']);
 
     $processes = array(
         "powertokwh"=>array(
@@ -265,7 +265,7 @@ function postprocess_controller()
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------
         $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = "$log_location/postprocess.log";
+        $update_logfile = $settings['log']['location']."/postprocess.log";
         $redis->rpush("service-runner","$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
@@ -336,7 +336,7 @@ function postprocess_controller()
         // -----------------------------------------------------------------
 
         $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = "$log_location/postprocess.log";
+        $update_logfile = $settings['log']['location']."/postprocess.log";
         $redis->rpush("service-runner","$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
@@ -347,7 +347,7 @@ function postprocess_controller()
 
     if ($route->action == 'getlog') {
         $route->format = "text";
-        $log_filename = "$log_location/postprocess.log";
+        $log_filename = $settings['log']['location']."/postprocess.log";
         if (file_exists($log_filename)) {
           ob_start();
           passthru("tail -30 $log_filename");
