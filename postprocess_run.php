@@ -34,7 +34,7 @@ for ($i=2; $i<count($files); $i++) {
     }
 }
 
-if (!$redis_enabled) { echo "ERROR: Redis is not enabled"; die; }
+if (!$settings['redis']['enabled']) { echo "ERROR: Redis is not enabled"; die; }
 $redis = new Redis();
 $connected = $redis->connect($settings['redis']['host'], $settings['redis']['port']);
 if (!$connected) { echo "Can't connect to redis at ".$settings['redis']['host'].":".$settings['redis']['port']; die; }
