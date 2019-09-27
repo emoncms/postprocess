@@ -21,7 +21,7 @@ pre {
 <hr>
 <button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
 <h3>Logger</h3>
-<p>on file <?php global $log_location; echo "$log_location/postprocess.log"; ?></p>
+<div id="logpath"></div>
 <pre id="logreply-bound"><div id="logreply"></div></pre>
 
 <hr>
@@ -48,12 +48,6 @@ pre {
 <div id="process_options"></div>
 <button id="create" class="btn" style="display:none">Create</button>
 
-<script>
-
-var path = "<?php echo $path; ?>";
-
-</script>
-
 <script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js"></script>
 <script>
 var logrunning = false;
@@ -65,7 +59,7 @@ function refresherStart(func, interval){
 }
 getLog();
 function getLog() {
-  $.ajax({ url: path+"postprocess/getlog", async: true, dataType: "text", success: function(result)
+  $.ajax({ url: path+"postprocess/getlog", async: true, dataType: "text", success(result)
     {
       $("#logreply").html(result);
       $("#logreply-bound").scrollTop = $("#logreply-bound").scrollHeight;
@@ -77,4 +71,11 @@ $("#getlog").click(function() {
   if (logrunning) { refresherStart(getLog, 500); }
   else { refresherStart(getLog, 0);  }
 });
+//output the logfile path just above the log pre
+$.ajax({ url: path+"postprocess/logpath", async: true, dataType: "text", success(result)
+    {
+      $("#logpath").html("<p>on file: "+result+"</p>");
+    }
+});
+
 </script>

@@ -344,6 +344,10 @@ function postprocess_controller()
         $route->format = "json";
         return array('content'=>$params);
     }
+    
+    if ($route->action == 'logpath') {
+        return $settings['log']['location']."/postprocess.log";
+    }
 
     if ($route->action == 'getlog') {
         $route->format = "text";
