@@ -65,6 +65,9 @@ function postprocess_controller()
             "maxrate"=>array("type"=>"value", "short"=>"Max accumulation rate:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         ),
+        "removenan"=>array(
+            "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),
+        ),
         "liquidorairflow_tokwh"=>array(
             "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
             "flow"=>array("type"=>"feed", "engine"=>5, "short"=>"flow in m3/h"),

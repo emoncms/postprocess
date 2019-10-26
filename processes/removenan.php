@@ -2,79 +2,66 @@
 
 function removenan($dir,$processitem)
 {
-    if (!isset($processitem->input)) return false;
-    if (!isset($processitem->scale)) return false;
-    if (!isset($processitem->output)) return false;
-    
-    $input = $processitem->input;
-    $scale = $processitem->scale;
-    $output = $processitem->output;
-    // --------------------------------------------------
-    
-    if (!file_exists($dir.$input.".meta")) {
-        print "input file $input.meta does not exist\n";
+    if (!isset($processitem->feedid)) return false;
+    $id = $processitem->feedid;
+   
+    if (!$fh = @fopen($dir.$id.".dat", 'c+')) {
+        echo "ERROR: could not open $dir $id.dat\n";
         return false;
     }
-    
-    if (!file_exists($dir.$output.".meta")) {
-        print "output file $output.meta does not exist\n";
+    $npoints = floor(filesize($dir.$id.".dat") / 4.0);
+    if ($npoints==0) {
+        echo "ERROR: npoints is zero\n";
         return false;
     }
-
-    $input_meta = getmeta($dir,$input);
+    $fpos = 0;
+    $dplefttoread = $npoints;
+    $blocksize = 100000;
+    $in_nan_period = 0;
+    $startval = 0;
+    $startpos = 0;
+    $nanfix = 0;
     
-    createmeta($dir,$output,$input_meta);
-    $output_meta = getmeta($dir,$output);
-    // if ($om->npoints >= $im->npoints) {
-    //   print "output feed already up to date\n";
-    //   return false;
-    // }
-
-    if (!$input_fh = @fopen($dir.$input.".dat", 'rb')) {
-        echo "ERROR: could not open $dir $input.dat\n";
-        return false;
-    }
-    
-    if (!$output_fh = @fopen($dir.$output.".dat", 'c+')) {
-        echo "ERROR: could not open $dir $output.dat\n";
-        return false;
-    }
-    
-    // get start position
-    $start_pos = $output_meta->npoints;
-    
-    // get end position
-    $end_pos = $input_meta->npoints;
-    
-    $buffer = "";
-    $A = 0;
-    $B = 0;
-    
-    fseek($input_fh,$start_pos*4);
-    fseek($output_fh,$start_pos*4);
-    
-    for ($n=($start_pos+1); $n<=$end_pos; $n++) {
-        $input_tmp = unpack("f",fread($input_fh,4));
-        
-        $value = 1*$input_tmp[1];
-        if (!is_nan($input_tmp[1])) { 
-            $value *= $scale;
+    $stime = microtime(true);
+    while ($dplefttoread>0)
+    {
+        fseek($fh,$fpos*4);
+        $values = unpack("f*",fread($fh,4*$blocksize));
+        $count = count($values);
+        if ($count==0) break;
+        for ($i=1; $i<=$count; $i++)
+        {
+            $dpos = $fpos + ($i-1);
+            if (is_nan($values[$i])) {
+                $in_nan_period = 1;
+            } else {
+                $endval = $values[$i];
+                if ($in_nan_period==1) {
+                    $npoints2 = $dpos - $startpos;
+                    $diff = ($endval - $startval) / $npoints2;
+                    for ($p=1; $p<$npoints2; $p++)
+                    {
+                        fseek($fh,($startpos+$p)*4);
+                        fwrite($fh,pack("f",$startval+($p*$diff)));
+                        $nanfix++;
+                    }
+                }
+                $startval = $endval;
+                $startpos = $dpos;
+                $in_nan_period = 0;
+            }
+            
+            if ($dpos%($npoints/10)==0) echo ".";
         }
-        $buffer .= pack("f",$value);
+        $dplefttoread -= $count;
+        $fpos += $count;
     }
+    fclose($fh);
     
-    fwrite($output_fh,$buffer);
+    echo "\n";
     
-    $byteswritten = strlen($buffer);
-    print "bytes written: ".$byteswritten."\n";
-    fclose($output_fh);
-    fclose($input_fh);
-    
-    $time = $input_meta->start_time + ($input_meta->npoints * $input_meta->interval);
-    
-    if ($byteswritten>0) {
-        print "last time value: ".$time." ".$value."\n";
-        updatetimevalue($output,$time,$value);
-    }
+    echo "nanfix: ".round(($nanfix/$npoints)*100)."%\n";
+    echo "time: ".(microtime(true)-$stime)."\n";
+    echo "==================================================================\n";
     return true;
 }
