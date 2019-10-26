@@ -60,8 +60,7 @@ function removenan($dir,$processitem)
     
     echo "\n";
     
-    echo "nanfix: ".round(($nanfix/$npoints)*100)."%\n";
+    echo "nanfix: ".$nanfix." datapoints, ".round(($nanfix/$npoints)*100)."%\n";
     echo "time: ".(microtime(true)-$stime)."\n";
-    echo "==================================================================\n";
     return true;
 }
