@@ -1,3 +1,5 @@
+var processlist_updater = false;
+
 var feeds = feed.list();
 
 //--------------------------------------------------------------------------------------------
@@ -134,6 +136,8 @@ $("#create").click(function(){
         params[z] = $(".process_option[option="+z+"]").val()
     }
     
+    clearInterval(processlist_updater);
+    
     $.ajax({
         type: "POST",
         url: path+"postprocess/create?process="+process, 
@@ -147,7 +151,10 @@ $("#create").click(function(){
     
     $("#create").hide();
     
-    processlist_update();
+    setTimeout(function() {
+        processlist_update();
+        processlist_updater = setInterval(processlist_update,5000);
+    },500);
 });
 
 
@@ -157,7 +164,7 @@ $("#create").click(function(){
 
 var processlist = [];
 processlist_update();
-setInterval(processlist_update,5000);
+processlist_updater = setInterval(processlist_update,5000);
 
 function processlist_update()
 {

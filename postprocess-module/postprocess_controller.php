@@ -9,7 +9,8 @@ function postprocess_controller()
 
     $result = false;
     $route->format = "text";
-
+    
+    $log = new EmonLogger(__FILE__);
 
     include "Modules/postprocess/postprocess_model.php";
     $postprocess = new PostProcess($mysqli);
@@ -137,11 +138,13 @@ function postprocess_controller()
                                 $timevalue = $feed->get_timevalue($id);
                                 $f['time'] = $timevalue["time"];
                             } else {
-                                $valid = false;
+                                // $valid = false;
+                                // $log->error("Invalid meta: ".json_encode($meta));
                             }
                             $item->$key = $f;
                         } else {
                             $valid = false;
+                            $log->error("Feed $id does not exist");
                         }
                     }
 
@@ -168,6 +171,7 @@ function postprocess_controller()
                                 $all_ending_times[] = $timevalue["time"];
                             } else {
                                 $valid = false;
+                                $log->error("Feed $id does not exist");
                             }
                         }
                         if ($valid){
@@ -181,6 +185,7 @@ function postprocess_controller()
                 }
             } else {
                 $valid = false;
+                $log->error("$process does not exist");
             }
 
             if ($valid) {
