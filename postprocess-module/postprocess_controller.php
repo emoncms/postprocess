@@ -9,7 +9,7 @@ function postprocess_controller()
 
     $result = false;
     $route->format = "text";
-    
+
     $log = new EmonLogger(__FILE__);
 
     include "Modules/postprocess/postprocess_model.php";
@@ -74,14 +74,14 @@ function postprocess_controller()
             "flow"=>array("type"=>"feed", "engine"=>5, "short"=>"flow in m3/h"),
             "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
             "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
-            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output energy feed name (kWh) :")
         ),
         "constantflow_tokwh"=>array(
             "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
             "flow"=>array("type"=>"value", "short"=>"constant flow in m3/h"),
             "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
             "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
-            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name for permeability losses in m3/h :")
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output energy feed name (kWh) :")
         ),
         "basic_formula"=>array(
             "formula"=>array("type"=>"formula", "short"=>"Enter your formula (e.g. f1+2*f2-f3/12 if you work on feeds 1,2,3) - brackets not implemented"),
@@ -352,7 +352,7 @@ function postprocess_controller()
         $route->format = "json";
         return array('content'=>$params);
     }
-    
+
     if ($route->action == 'logpath') {
         return $settings['log']['location']."/postprocess.log";
     }
