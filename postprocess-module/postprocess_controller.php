@@ -17,6 +17,14 @@ function postprocess_controller()
 
     include "Modules/feed/feed_model.php";
     $feed = new Feed($mysqli,$redis,$settings['feed']);
+    
+    $bfdescription="Enter your formula as a symbolic expression - allows brackets and the max function <br>
+                  Examples : <br>
+                  f1+2*f2-f3/12 if you work on feeds 1,2,3 <br>
+                  1162.5*5.19*max(f7-f11,0) <br>
+                  1162.5*f10*(f7-11) <br>
+                  <br>
+                  <font color=red>Caution : (f12-f13)*(f7-f11) will not be recognized !!</font><br>";
 
     $processes = array(
         "powertokwh"=>array(
@@ -84,7 +92,7 @@ function postprocess_controller()
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output energy feed name (kWh) :")
         ),
         "basic_formula"=>array(
-            "formula"=>array("type"=>"formula", "short"=>"Enter your formula (e.g. f1+2*f2-f3/12 if you work on feeds 1,2,3) - brackets not implemented"),
+            "formula"=>array("type"=>"formula", "short"=>$bfdescription),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name :")
         )
     );

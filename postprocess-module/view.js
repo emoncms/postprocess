@@ -17,21 +17,21 @@ $("#process_select").html(process_select);
 
 $("#process_select").change(function(){
    var process = $(this).val();
-   
+
    if (process=="") {
        $("#process_options").html("");
        $("#create").hide();
        return false;
    }
-   
+
    var options = "";
    for (var z in processes[process]) {
-       
+
        options += "<b>"+processes[process][z]["short"]+"</b><br>";
        if (processes[process][z]["type"]=="feed") {
             options += "<select class='process_option' option="+z+">";
             //for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
-            
+
             var datatype = 1;  // 0:UNDEFINED, 1:REALTIME, 2:DAILY, 3:HISTOGRAM
             var feedgroups = [];
             for (n in feeds) {
@@ -55,21 +55,21 @@ $("#process_select").change(function(){
             options+=out;
             options += "</select><br>";
        }
-       
+
        if (processes[process][z]["type"]=="newfeed") {
            var suggestion = "";
            options += "<input class='process_option' option="+z+" type='text' value='"+suggestion+"' /><br>";
        }
-       
+
        if (processes[process][z]["type"]=="value") {
            options += "<input class='process_option' option="+z+" type='text' /><br>";
        }
-       
+
        if (processes[process][z]["type"]=="formula") {
-           options += "<input class='process_option' option="+z+" type='text' /><br>";  
+           options += "<input class='process_option' option="+z+" type='text' /><br>";
        }
    }
-   $("#process_options").html(options); 
+   $("#process_options").html(options);
    validate();
 });
 
@@ -84,11 +84,11 @@ function validate()
     for (var z in processes[process]) {
         if (processes[process][z]["type"]=="newfeed") {
             var name = $(".process_option[option="+z+"]").val();
-            
+
             var validfeed = true;
             for (var n in feeds) if (feeds[n].name==name) validfeed = false;
             if (name=="") validfeed = false;
-            
+
             if (validfeed) {
                 $(".process_option[option="+z+"]").css("background-color","#eeffee");
             } else {
@@ -96,7 +96,7 @@ function validate()
                 valid = false;
             }
         }
-        
+
         if (processes[process][z]["type"]=="value") {
             var value = $(".process_option[option="+z+"]").val();
             if (value=="" || isNaN(value)) {
@@ -106,51 +106,51 @@ function validate()
                 $(".process_option[option="+z+"]").css("background-color","#eeffee");
             }
         }
-        
+
         if (processes[process][z]["type"]=="formula") {
             $(".process_option[option="+z+"]").css("width","400px");
             var formula = $(".process_option[option="+z+"]").val();
-            var regex1 = /[^-\+\*\/\df]/;
+            var regex1 = /[^-\+\*\/\dfmax,\.\(\)]/;
             var regex2 = /f/;
-            if (formula.match(regex1) || !formula.match(regex2)){
+            if (formula.match(regex1) || !formula.match(regex2) ){
                 $(".process_option[option="+z+"]").css("background-color","#ffeeee");
                 valid = false;
             } else {
                 $(".process_option[option="+z+"]").css("background-color","#eeffee");
             }
-        }   
+        }
     }
-    
+
     if (valid) $("#create").show(); else $("#create").hide();
-    
+
     return valid;
 }
 
 $("#create").click(function(){
     var process = $("#process_select").val();
     var params = {};
-    
+
     if (!validate()) return false;
-    
+
     for (var z in processes[process]) {
         params[z] = $(".process_option[option="+z+"]").val()
     }
-    
+
     clearInterval(processlist_updater);
-    
+
     $.ajax({
         type: "POST",
-        url: path+"postprocess/create?process="+process, 
+        url: path+"postprocess/create?process="+process,
         data: JSON.stringify(params),
-        dataType: 'text', 
-        async: false, 
-        success: function(result) { 
-            console.log(result); 
-        } 
+        dataType: 'text',
+        async: false,
+        success: function(result) {
+            console.log(result);
+        }
     });
-    
+
     $("#create").hide();
-    
+
     setTimeout(function() {
         processlist_update();
         processlist_updater = setInterval(processlist_update,5000);
@@ -169,22 +169,22 @@ processlist_updater = setInterval(processlist_update,5000);
 function processlist_update()
 {
     processlist = [];
-    $.ajax({ url: path+"postprocess/list", dataType: 'json', async: true, success: function(data) 
+    $.ajax({ url: path+"postprocess/list", dataType: 'json', async: true, success: function(data)
     {
         processlist = data;
 
         var out = "";
         for (z in processlist) {
-        
+
             var process = processlist[z].process;
-        
+
             out += "<tr>";
             out += "<td>"+process+"</td>";
-            
+
             out += "<td>";
             var base_npoints = 0;
             var out_npoints = 0;
-            
+
             var fstart_time=[];
             var ftime=[];
             var finterval=[];
@@ -209,14 +209,14 @@ function processlist_update()
                 //feed details are id and name
                 } else {
                     out += "<div style='width:250px; float:left'><b>"+key+":</b>";
-                    if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed") 
+                    if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed")
                         out += processlist[z][key].id+":"+processlist[z][key].name;
                     //if value, should print it
                     if (processes[process][key].type=="value")
                         out += processlist[z][key];
                     out += "</div>";
                 }
-                
+
                 //rework by alexandre CUER
                 if (processes[process][key].type=="feed" || processes[process][key].type=="formula") {
                     //base_npoints = processlist[z][key].npoints;
@@ -232,39 +232,39 @@ function processlist_update()
             //console.log(fstart_time);
             base_npoints=Math.round((Math.min(...ftime)-Math.max(...fstart_time))/Math.max(...finterval));
             out += "</td>";
-            
+
             var points_behind = base_npoints - out_npoints;
             out += "<td>"+points_behind+" points behind</td>";
             out += "<td><button class='btn runprocess' processid="+z+" >Run process</button></td>";
             out += "</tr>";
         }
         if (out=="") $("#noprocessesalert").show(); else $("#noprocessesalert").hide();
-        
-        $("#processlist").html(out); 
-    } 
+
+        $("#processlist").html(out);
+    }
     });
 }
 
 $("#processlist").on("click",".runprocess",function(){
     var z = $(this).attr("processid");
     var process = processlist[z].process;
-    
+
     var params = {};
-    
+
     for (var key in processes[process]) {
-        
+
         if (processes[process][key].type=="feed") {
             params[key] = processlist[z][key].id;
         }
-        
+
         if (processes[process][key].type=="newfeed") {
             params[key] = processlist[z][key].id;
         }
-        
+
         if (processes[process][key].type=="value") {
             params[key] = processlist[z][key];
         }
-        
+
         if (processes[process][key].type=="formula") {
             params[key] = processlist[z][key].expression;
         }
@@ -272,12 +272,12 @@ $("#processlist").on("click",".runprocess",function(){
 
     $.ajax({
         type: "POST",
-        url: path+"postprocess/update?process="+process, 
+        url: path+"postprocess/update?process="+process,
         data: JSON.stringify(params),
-        dataType: 'text', 
-        async: false, 
-        success: function(result) { 
-            console.log(result); 
-        } 
+        dataType: 'text',
+        async: false,
+        success: function(result) {
+            console.log(result);
+        }
     });
 });

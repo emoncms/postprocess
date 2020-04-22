@@ -2,15 +2,33 @@
 
 function basic_formula($dir,$processitem)
 {
-
     // regular expression to recognize a float or int value
     // use of ?: not to perturb things in creating useless references
     $Xnbr="(?:[0-9]+\.[0-9]+|[0-9]+)";
+    // regexp for a feed
+    $Xf="f\d+";
+    // regexp for an operator - blank instead of * is not permitted
+    $Xop="(?:-|\*|\+|\/)";
+    // regexp for starting a formula with an operator or with nothing
+    $XSop="(?:-|\+|)";
+    // regexp for a basic formula, ie something like f12-f43 or 2.056*f42+f45
+    $Xbf="$XSop(?:$Xnbr$Xop)*$Xf(?:$Xop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*)*";
+    // regexp for a scaling parameter
+    $Xscaleop="(?:\*|\/)";
+    $Xscale="$XSop(?:$Xnbr$Xscaleop)*(?:$Xf$Xscaleop)*";
+    // functions list
+    // brackets must always be the last function in the list
+    $functions=[
+      ["name"=>"max","f"=>"max\(($Xbf),($Xnbr)\)"],
+      ["name"=>"brackets","f"=>"\(($Xbf)\)"],
+    ];
+    $nbf=count($functions);
 
     //retrieving the formula
     $formula=$processitem->formula;
     $formula=str_replace('\\','',$formula);
-    //print("$formula \n");
+    $formula=strtolower($formula);
+    $original=$formula;
 
     //checking the output feed
     $out=$processitem->output;
@@ -20,53 +38,93 @@ function basic_formula($dir,$processitem)
         return false;
     }
 
-    $pieces=preg_split("@(?=(-|\+))@",$formula);
-    //$elements > a third dimensionnal array > datas are on level 2
-    //for a given level 1, we operate multiplication and division within corresponding level 2 elements and then give a sign to the result
-    //the final result is the addition of the whole
-    //each subarray level 2 is constructed as follow
-    //[0]=> "feed" or "value"
-    //[1]=> operator +,-,* or /
-    //[2]=> if feed multiplicator value (int/float), if value : value number (int/float)
-    //[3]=> does not exist for value, if feed : feed number
-    // nota : feed multiplicator value is filled only when user forgot to use operator *
-    $elements=[];
-    foreach($pieces as $piece){
-        $temp=preg_split("@(?=(\*|\/))@",$piece);
-        $fly=[];
-        $i=0;
-        foreach($temp as $t){
-            if ($result=preg_match("/(-|\+|\*|\/)?($Xnbr)?(f\d+)?/",$t,$b)){
-                //if we've got 4 elements, we face a feed
-                //if not we face a value
-                if(sizeof($b)==4) {
-                    $b[3]=intval(substr($b[3],1));
-                    $b[0]="feed";
-                } else $b[0]="value";
-                if ($i==0 && !$b[1]) $b[1]='+';
-                if ($i>0 && !$b[1]) {
-                    print("check your formula");
-                    return false;
-                }
-                if (!$b[2]) $b[2]=1;
-                $fly[]=$b;
-                $i++;
-            } else {
-                print("check your formula");
-                return false;
-            }
-        }
-    $elements[]=$fly;
-    }
-    //print_r($elements);
-    $feeds_meta=[];
-    $feeds_dat=[];
-
     //we catch the distinct feed numbers involved in the formula
     $feed_ids=[];
-    while(preg_match("/(f\d+)/",$formula,$b)){
-        $feed_ids[]=substr($b[0],1,strlen($b[0])-1);
+    while(preg_match("/$Xf/",$formula,$b)){
+        //removing the f...
+        $feed_ids[]=substr($b[0],1);
         $formula=str_replace($b[0],"",$formula);
+    }
+    $formula=$original;
+
+    $array= [];
+    for ($i=0;$i<$nbf;$i++){
+      $e=$functions[$i]["name"];
+      $f=$functions[$i]["f"];
+      while (preg_match("/$f/",$formula,$tab)) {
+          //we remove the first element of tab which is the complete full match
+          //the formula matching /$Xbf/ is therefore tab[0]
+          $matched=array_shift($tab);
+          $array[]=[
+              "scale"=>1,
+              "fun"=>$e,
+              "formula"=>$tab
+          ];
+          $index=count($array);
+          $formula=str_replace($matched,"func",$formula);
+          if (preg_match("/($Xscale)func/",$formula,$c)){
+              if ($c[1]) $array[$index-1]["scale"]=$c[1];
+          }
+          $formula=str_replace("$c[1]func","",$formula);
+      }
+    }
+    //checking if we have only a basic formula
+    if (preg_match("/^$Xbf$/",$formula,$tab)){
+        $array[]=[
+            "scale"=>1,
+            "fun"=>"none",
+            "formula"=>$tab
+        ];
+    }
+    //we rebuild the formula with what we have extracted
+    $recf="";
+    foreach ($array as $a){
+        if ($a["scale"]=="1") $scale=""; else $scale=$a["scale"];
+        if ($a["fun"]=="max"){
+          $recf.="{$scale}max({$a["formula"][0]},{$a["formula"][1]})";
+        }
+        else if ($a["fun"]=="brackets"){
+          $recf.="{$scale}({$a["formula"][0]})";
+        }
+        else if ($a["fun"]=="none"){
+          $recf.="{$scale}{$a['formula'][0]}";
+        }
+    }
+    if ($recf==$original) print("formula is OK!!<br>"); else {
+      print("STOPPING could not understand your formula SORRY....<br>");
+      return false;
+    }
+
+    $elements=[];
+    foreach ($array as $a){
+        $element=new stdClass();
+        // we analyse the scaling parameter
+        $fly=[];
+        foreach (preg_split("@(?=(\*|\/))@",$a["scale"]) as $piece) {
+          if ($result=preg_match("/($Xop)?($Xnbr)?($Xf)?/",$piece,$b)){
+             if (count($b)>2){
+               $c=ftoa($b);
+               if($c[2]) $fly[]=$c;
+             }
+          }
+        }
+        $element->scale=$fly;
+        $element->function=$a["fun"];
+        if (count($a["formula"]) > 1) $element->arg2=$a["formula"][1];
+        // we analyse the formula
+        foreach(preg_split("@(?=(-|\+))@",$a["formula"][0]) as $pieces) {
+           if(strlen($pieces)){
+             $fly=[];
+             foreach(preg_split("@(?=(\*|\/))@",$pieces) as $piece) {
+               if ($result=preg_match("/($Xop)?($Xnbr)?($Xf)?/",$piece,$b)) {
+                 $c=ftoa($b);
+                 if($c[2]) $fly[]=$c;
+               }
+             }
+             $element->formula[]=$fly;
+           }
+        }
+        $elements[]=$element;
     }
 
     //we retrieve the meta and open the dat files
@@ -99,36 +157,24 @@ function basic_formula($dir,$processitem)
     $buffer="";
 
     for ($time=$writing_start_time;$time<$writing_end_time;$time+=$interval){
-        $s=[];
-        foreach($elements as $element){
-            $values=[];
-            foreach($element as $e){
-                $value=NAN;
-                if ($e[0]=="feed"){
-                    $pos = floor(($time - $feeds_meta[$e[3]]->start_time) / $feeds_meta[$e[3]]->interval);
-                    if ($pos>=0 && $pos<$feeds_meta[$e[3]]->npoints) {
-                        fseek($feeds_dat[$e[3]],$pos*4);
-                        $tmp = unpack("f",fread($feeds_dat[$e[3]],4));
-                        $value = $e[2]*$tmp[1];
-                    }
-                }
-                if ($e[0]=="value") $value = $e[2];
-                if (!is_nan($value) && $value!=0){
-                    if ($e[1]=="/") $value=1/$value;
-                    if ($e[1]=="-") $value=-$value;
-                }
-                $values[]=$value;
-            }
-            if (!in_array(NAN,$values)){
-                $s[]=array_product($values);
-            } else $s[]=NAN;
-        }
-        if (!in_array(NAN,$s)){
-            $sum=array_sum($s);
-        } else $sum=NAN;
-
-        //print_r("$sum \n");
-        $buffer.=pack("f",$sum);
+      $s=[];
+      foreach($elements as $element){
+        $s1=bfo([$element->scale],$feeds_meta,$feeds_dat,$time);
+        $s2=bfo($element->formula,$feeds_meta,$feeds_dat,$time);
+        //print($s1."-----".$s2);
+        if (!is_nan($s1) && !is_nan($s2)) {
+          if($element->function=="max") {
+            $s[]=$s1*max($s2,$element->arg2);
+          }
+          if($element->function=="brackets" || $element->function=="none") {
+            $s[]=$s1*$s2;
+          }
+        } else $s[] = NAN;
+      }
+      if (!in_array(NAN,$s)){
+        $sum=array_sum($s);
+      } else $sum=NAN;
+      $buffer.=pack("f",$sum);
     }
 
     if(!$buffer) {
@@ -151,7 +197,5 @@ function basic_formula($dir,$processitem)
     print("last time value: $time / $sum \n");
     updatetimevalue($out,$time,$sum);
     return true;
-
-
 }
 ?>
