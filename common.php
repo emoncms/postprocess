@@ -59,8 +59,15 @@ function compute_meta()
 
 /*
 format an array for the formula engine
-$b is the result of a preg_match with /($Xop)?($Xnbr)?($Xf)?/
+$b is the result of a preg_match on a formula chunk with the regexp /($Xop)?($Xnbr)?($Xf)?/
+$Xop : regexp for operator
+$Xnbr : regexp for float or int value
+$Xf : regexp for a feed
 cf process basic_formula for more details on $Xop,$Xnbr,$Xf
+ouputs a formula element as a 3 elements vector :
+0 -> type of data ie "feed" ou "value"
+1 -> operator
+2 -> value or feed number
 */
 function ftoa($b){
   $c=[];
