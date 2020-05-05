@@ -32,6 +32,11 @@ function postprocess_controller()
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
         ),
+        "average"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:"),
+            "interval"=>array("type"=>"value", "short"=>"Interval of output feed (seconds):")
+        ),
         "accumulator"=>array(
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
@@ -91,6 +96,15 @@ function postprocess_controller()
             "tint"=>array("type"=>"feed", "engine"=>5, "short"=>"Internal temperature feed / start temperature feed :"),
             "text"=>array("type"=>"feed", "engine"=>5, "short"=>"External temperature feed / return temperature feed :"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output energy feed name (kWh) :")
+        ),
+        "batterysimulator"=>array(
+            "capacity"=>array("type"=>"value", "short"=>"Usable battery capacity in kWh"),
+            "solar"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar feed:"),
+            "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption feed:"),
+            "charge"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter battery charge feed name:"),
+            "discharge"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter battery discharge feed name:"),
+            "soc"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter battery SOC feed name:"),
+            "import"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter grid import feed name:")
         ),
         "basic_formula"=>array(
             "formula"=>array("type"=>"formula", "short"=>$bfdescription),
@@ -318,6 +332,7 @@ function postprocess_controller()
                    return array('content'=>"invalid feed");
                if ($f['engine']!=$option['engine'])
                    return array('content'=>"incorrect feed engine");
+               $params->$key = $feedid;
            }
 
            if ($option['type']=="value") {
@@ -331,6 +346,7 @@ function postprocess_controller()
 
         $userid = $session['userid'];
         $processlist = $postprocess->get($userid);
+        
         if ($processlist==null) $processlist = array();
 
         $params->process = $process;
@@ -338,8 +354,8 @@ function postprocess_controller()
         $valid = false;
         for ($i=0; $i<count($processlist); $i++) {
             $tmp = $processlist[$i];
-            // print "prm:".json_encode($params)."\n";
-            // print "tmp:".json_encode($tmp)."\n";
+            //print "prm:".json_encode($params)."\n";
+            //print "tmp:".json_encode($tmp)."\n";
             if (json_encode($tmp)==json_encode($params)) $valid = true;
         }
         if (!$valid)
