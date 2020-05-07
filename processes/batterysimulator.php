@@ -31,9 +31,9 @@ function batterysimulator($dir,$p)
     if (!$model->output('discharge')) return false;
     if (!$model->output('soc')) return false;
     if (!$model->output('import')) return false;
-    // if (!$model->output('charge_kwh')) return false;
-    // if (!$model->output('discharge_kwh')) return false;
-    // if (!$model->output('import_kwh')) return false;
+    if (!$model->output('charge_kwh')) return false;
+    if (!$model->output('discharge_kwh')) return false;
+    if (!$model->output('import_kwh')) return false;
     
     // Check that intervals are the same
     if ($model->meta['solar']->interval != $model->meta['consumption']->interval) {
@@ -59,6 +59,9 @@ function batterysimulator($dir,$p)
     $solar = 0;
     $use = 0;
     $soc = $p->capacity * 0.5;
+    $charge_kwh = $model->value['charge_kwh'];
+    $discharge_kwh = $model->value['discharge_kwh'];
+    $import_kwh = $model->value['import_kwh'];
    
     if (!$recalc) {
          $soc = $model->value['soc']*0.01*$p->capacity;
@@ -111,11 +114,18 @@ function batterysimulator($dir,$p)
         
         $soc_prc = 100.0*$soc/$p->capacity;
         
+        $charge_kwh += ($charge * $interval)/3600000.0;
+        $discharge_kwh += ($discharge * $interval)/3600000.0;
+        $import_kwh += ($import * $interval)/3600000.0;
+        
         $model->write('charge',$charge);
         $model->write('discharge',$discharge);
         $model->write('soc',$soc_prc);
         $model->write('import',$import);
-        
+
+        $model->write('charge_kwh',$charge_kwh);
+        $model->write('discharge_kwh',$discharge_kwh);
+        $model->write('import_kwh',$import_kwh);
         $i++;
         if ($i%102400==0) echo ".";
     }
