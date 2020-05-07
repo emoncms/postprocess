@@ -98,13 +98,16 @@ function postprocess_controller()
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output energy feed name (kWh) :")
         ),
         "batterysimulator"=>array(
-            "capacity"=>array("type"=>"value", "short"=>"Usable battery capacity in kWh"),
             "solar"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar feed:"),
             "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption feed:"),
-            "charge"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter battery charge feed name:"),
-            "discharge"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter battery discharge feed name:"),
-            "soc"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter battery SOC feed name:"),
-            "import"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter grid import feed name:")
+            "capacity"=>array("type"=>"value", "default"=>4.4, "short"=>"Usable battery capacity in kWh"),
+            "max_charge_rate"=>array("type"=>"value", "default"=>2500.0, "short"=>"Max charge rate in Watts"),
+            "max_discharge_rate"=>array("type"=>"value", "default"=>2500.0, "short"=>"Max discharge rate in Watts"),
+            "round_trip_efficiency"=>array("type"=>"value", "default"=>0.9, "short"=>"Round trip efficiency 0.9 = 90%"),
+            "charge"=>array("type"=>"newfeed", "default"=>"battery_charge", "engine"=>5, "short"=>"Enter battery charge feed name:"),
+            "discharge"=>array("type"=>"newfeed", "default"=>"battery_discharge", "engine"=>5, "short"=>"Enter battery discharge feed name:"),
+            "soc"=>array("type"=>"newfeed", "default"=>"battery_soc", "engine"=>5, "short"=>"Enter battery SOC feed name:"),
+            "import"=>array("type"=>"newfeed", "default"=>"import", "engine"=>5, "short"=>"Enter grid import feed name:")
         ),
         "basic_formula"=>array(
             "formula"=>array("type"=>"formula", "short"=>$bfdescription),

@@ -15,10 +15,13 @@
 
 function batterysimulator($dir,$p)
 {
-    $efficiency = 0.95; // single trip / one way efficiency
+    $recalc = false;
 
     // Params ($p for process)
     if (!isset($p->capacity)) return false;
+    if (!isset($p->max_charge_rate)) return false;
+    if (!isset($p->max_discharge_rate)) return false;
+    if (!isset($p->round_trip_efficiency)) return false;
     // Input feeds
     if (!isset($p->solar)) return false;
     if (!isset($p->consumption)) return false;
@@ -27,6 +30,14 @@ function batterysimulator($dir,$p)
     if (!isset($p->discharge)) return false;
     if (!isset($p->soc)) return false;
     if (!isset($p->import)) return false;
+
+    if ($p->round_trip_efficiency>1.0) $p->round_trip_efficiency = 1.0;
+    if ($p->round_trip_efficiency<0.1) $p->round_trip_efficiency = 0.1;
+    $single_trip_efficiency = 1.0-(1.0-$p->round_trip_efficiency)*0.5;
+    
+    if ($p->capacity<0.1) $p->capacity = 0.1;
+    if ($p->max_charge_rate<0.0) $p->max_charge_rate = 0.0;
+    if ($p->max_discharge_rate<0.0) $p->max_discharge_rate = 0.0;
     
     // Check that feeds exist
     if (!file_exists($dir.$p->solar.".meta")) {
@@ -79,6 +90,10 @@ function batterysimulator($dir,$p)
     createmeta($dir,$p->soc,$out_meta);
     createmeta($dir,$p->import,$out_meta);
     
+    // Process new data since last run
+    $soc_meta = getmeta($dir,$p->soc);
+    if (!$recalc) $start_time = $soc_meta->end_time;
+    
     // Open input feed data files
     if (!$solar_fh = @fopen($dir.$p->solar.".dat", 'rb')) {
         echo "ERROR: could not open $dir ".$p->solar.".dat\n";
@@ -88,16 +103,48 @@ function batterysimulator($dir,$p)
         echo "ERROR: could not open $dir ".$p->consumption.".dat\n";
         return false;
     }
+    // Open output files so that we can read last value if needed
+    if (!$charge_fh = @fopen($dir.$p->charge.".dat", 'c+')) {
+        echo "ERROR: could not open $dir ".$p->charge.".dat\n";
+        return false;
+    }
+    if (!$discharge_fh = @fopen($dir.$p->discharge.".dat", 'c+')) {
+        echo "ERROR: could not open $dir ".$p->discharge.".dat\n";
+        return false;
+    }
+    if (!$soc_fh = @fopen($dir.$p->soc.".dat", 'c+')) {
+        echo "ERROR: could not open $dir ".$p->soc.".dat\n";
+        return false;
+    }
+    if (!$import_fh = @fopen($dir.$p->import.".dat", 'c+')) {
+        echo "ERROR: could not open $dir ".$p->import.".dat\n";
+        return false;
+    }
     
     // Seek to starting positions
     $solar_pos = floor(($start_time - $solar_meta->start_time) / $solar_meta->interval);
     $use_pos = floor(($start_time - $use_meta->start_time) / $use_meta->interval);
+    $output_pos = floor(($start_time - $soc_meta->start_time) / $soc_meta->interval);
     fseek($solar_fh,$solar_pos*4);
     fseek($use_fh,$use_pos*4);
     
     $solar = 0;
     $use = 0;
     $soc = $p->capacity * 0.5; 
+    
+    if (!$recalc && $output_pos!=0) {
+        // Read in last battery state of charge
+        fseek($soc_fh,($output_pos-1)*4);
+        $tmp = unpack("f",fread($soc_fh,4));
+        if (!is_nan($tmp[1])) $soc = $tmp[1]*0.01*$p->capacity;
+    } else {
+        $output_pos = 0;
+    }
+
+    fseek($charge_fh,$output_pos*4);
+    fseek($discharge_fh,$output_pos*4);
+    fseek($soc_fh,$output_pos*4);
+    fseek($import_fh,$output_pos*4);
     
     $charge_buffer = "";
     $discharge_buffer = "";
@@ -121,13 +168,14 @@ function batterysimulator($dir,$p)
         $charge = 0;
         if ($solar>$use) {
             $charge = $solar-$use;
-            $charge_after_loss = $charge * $efficiency;
+            if ($charge>$p->max_charge_rate) $charge = $p->max_charge_rate;
+            $charge_after_loss = $charge * $single_trip_efficiency;
             $soc_inc = ($charge_after_loss * $interval) / 3600000.0;
             // Upper limit
             if (($soc+$soc_inc)>$p->capacity) {
                 $soc_inc = $p->capacity - $soc;
                 $charge_after_loss = ($soc_inc * 3600000.0) / $interval;
-                $charge = $charge_after_loss / $efficiency;
+                $charge = $charge_after_loss / $single_trip_efficiency;
             }
             $soc += $soc_inc;
         }
@@ -137,56 +185,52 @@ function batterysimulator($dir,$p)
         $import = 0;
         if ($use>$solar) {
             $discharge = $use-$solar;
-            $discharge_before_loss = $discharge / $efficiency;
+            if ($discharge>$p->max_discharge_rate) $discharge = $p->max_discharge_rate;
+            $discharge_before_loss = $discharge / $single_trip_efficiency;
             $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
             // Lower limit
             if (($soc-$soc_dec)<0) {
                 $soc_dec = $soc;
                 $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
-                $discharge = $discharge_before_loss * $efficiency;
+                $discharge = $discharge_before_loss * $single_trip_efficiency;
             }
             $soc -= $soc_dec;
             
             $import = $use - $solar - $discharge;
         }
         
+        $soc_prc = 100.0*$soc/$p->capacity;
+        
         $charge_buffer .= pack("f",$charge);
         $discharge_buffer .= pack("f",$discharge);
-        $soc_buffer .= pack("f",$soc);
+        $soc_buffer .= pack("f",$soc_prc);
         $import_buffer .= pack("f",$import);
-    } 
-
-    if (!$fh = @fopen($dir.$p->charge.".dat", 'wb')) {
-        echo "ERROR: could not open $dir ".$p->charge.".dat\n";
-        return false;
-    }
-    fwrite($fh,$charge_buffer);
-    fclose($fh);
-    updatetimevalue($p->charge,$time,$charge);
-    
-    if (!$fh = @fopen($dir.$p->discharge.".dat", 'wb')) {
-        echo "ERROR: could not open $dir ".$p->discharge.".dat\n";
-        return false;
-    }
-    fwrite($fh,$discharge_buffer);
-    fclose($fh);
-    updatetimevalue($p->discharge,$time,$discharge);
-    
-    if (!$fh = @fopen($dir.$p->soc.".dat", 'wb')) {
-        echo "ERROR: could not open $dir ".$p->soc.".dat\n";
-        return false;
-    }
-    fwrite($fh,$soc_buffer);
-    fclose($fh);
-    updatetimevalue($p->soc,$time,$soc);
-    
-    if (!$fh = @fopen($dir.$p->import.".dat", 'wb')) {
-        echo "ERROR: could not open $dir ".$p->import.".dat\n";
-        return false;
-    }
-    fwrite($fh,$import_buffer);
-    fclose($fh);
-    updatetimevalue($p->import,$time,$import);
         
+        $i++;
+        if ($i%102400==0) echo ".";
+    }
+    echo "\n";
+    
+    $buffersize = strlen($soc_buffer)*4;
+    print "buffer size: ".$buffersize."\n";
+    
+    if ($buffersize>0) {
+        fwrite($charge_fh,$charge_buffer);
+        updatetimevalue($p->charge,$time,$charge);
+        
+        fwrite($discharge_fh,$discharge_buffer);
+        updatetimevalue($p->discharge,$time,$discharge);
+        
+        fwrite($soc_fh,$soc_buffer);
+        updatetimevalue($p->soc,$time,$soc);
+        
+        fwrite($import_fh,$import_buffer);
+        updatetimevalue($p->import,$time,$import);
+    }
+    fclose($charge_fh);
+    fclose($discharge_fh);  
+    fclose($soc_fh);
+    fclose($import_fh);
+    
     return true;
 }
