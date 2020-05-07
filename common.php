@@ -127,3 +127,96 @@ function bfo($elements,$feeds_meta,$feeds_dat,$time){
 
   return $sum;
 }
+
+class ModelHelper
+{
+    private $dir;
+    private $params;
+    private $fh = array();
+    private $buffer = array();
+    public $meta = array();
+    public $value = array();
+    
+    public function __construct($dir,$params) {
+        $this->dir = $dir;
+        $this->params = $params;
+    }
+    
+    private function load($key,$mode) {
+        // check for valid key
+        if (!isset($this->params->$key)) return false;
+        $feedid = $this->params->$key;
+        // load meta
+        if (!$meta = getmeta($this->dir,$feedid)) return false;
+        $this->meta[$key] = $meta;
+
+        if (!$this->fh[$key] = @fopen($this->dir.$feedid.".dat", $mode)) {
+            echo "ERROR: could not open ".$this->dir.$feedid.".dat\n";
+            return false;
+        }
+        
+        // Fetch last value
+        $this->value[$key] = 0.0;
+        if ($meta->npoints>0) {
+            fseek($this->fh[$key],($meta->npoints-1)*4);
+            $tmp = unpack("f",fread($this->fh[$key],4));
+            if (!is_nan($tmp[1])) $this->value[$key] = 1*$tmp[1];
+        }
+        return true;
+    }
+    
+    public function input($key) {
+        return $this->load($key,'rb');
+    }
+    
+    public function output($key) {
+        if (!$this->load($key,'c+')) return false;
+        $this->buffer[$key] = "";
+        return true;
+    }
+    
+    public function read($key,$value) {
+        $tmp = unpack("f",fread($this->fh[$key],4));
+        if (!is_nan($tmp[1])) $value = $tmp[1];
+        return $value;
+    }
+    
+    public function seek_to_time($time) {
+        foreach (array_keys($this->fh) as $key) {
+            $pos = floor(($time - $this->meta[$key]->start_time) / $this->meta[$key]->interval);
+            fseek($this->fh[$key],$pos*4);
+        }
+    }
+    
+    public function write($key,$value) {
+        $this->buffer[$key] .= pack("f",$value);
+        $this->value[$key] = $value;
+    }
+    
+    public function set_output_meta($start_time,$interval) {
+        foreach (array_keys($this->buffer) as $key) {
+            $this->meta[$key]->start_time = $start_time;
+            $this->meta[$key]->interval = $interval;
+            if ($this->meta[$key]->end_time==0) $this->meta[$key]->end_time = $start_time;
+        }
+    }
+    
+    public function save_all() {
+        $total_size = 0;
+        foreach (array_keys($this->buffer) as $key) {
+            $size = strlen($this->buffer[$key]);
+            if ($size>0) {
+                $feedid = $this->params->$key;
+                // Write meta data
+                createmeta($this->dir,$feedid,$this->meta[$key]);
+                // Write data
+                fwrite($this->fh[$key],$this->buffer[$key]);
+                fclose($this->fh[$key]);
+                $total_size += $size;
+                // Update feed last time and value
+                updatetimevalue($feedid,time(),$this->value[$key]);
+            }
+        }
+        return $total_size;
+    }
+}
