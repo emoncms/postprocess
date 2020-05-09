@@ -104,6 +104,9 @@ function postprocess_controller()
             "max_charge_rate"=>array("type"=>"value", "default"=>2500.0, "short"=>"Max charge rate in Watts"),
             "max_discharge_rate"=>array("type"=>"value", "default"=>2500.0, "short"=>"Max discharge rate in Watts"),
             "round_trip_efficiency"=>array("type"=>"value", "default"=>0.9, "short"=>"Round trip efficiency 0.9 = 90%"),
+            "timezone"=>array("type"=>"timezone", "default"=>"Europe/London", "short"=>"Timezone for offpeak charging"),
+            "offpeak_soc_target"=>array("type"=>"value", "default"=>0, "short"=>"Offpeak charging SOC target in % (0 = turn off)"),
+            "offpeak_start"=>array("type"=>"value", "default"=>3, "short"=>"Offpeak charging start time"),
             "charge"=>array("type"=>"newfeed", "default"=>"battery_charge", "engine"=>5, "short"=>"Enter battery charge feed name:"),
             "discharge"=>array("type"=>"newfeed", "default"=>"battery_discharge", "engine"=>5, "short"=>"Enter battery discharge feed name:"),
             "soc"=>array("type"=>"newfeed", "default"=>"battery_soc", "engine"=>5, "short"=>"Enter battery SOC feed name:"),
@@ -284,6 +287,11 @@ function postprocess_controller()
                if ($value!=$params->$key)
                    return array('content'=>"invalid value");
            }
+
+           if ($option['type']=="timezone") {
+               if (!$datetimezone = new DateTimeZone($params->$key))
+                   return array('content'=>"invalid timezone");
+           }
         }
 
         // If we got this far the input parameters where valid.
@@ -345,6 +353,11 @@ function postprocess_controller()
                $value = (float) $params->$key;
                if ($value!=$params->$key)
                    return array('content'=>"invalid value");
+           }
+           
+           if ($option['type']=="timezone") {
+               if (!$datetimezone = new DateTimeZone($params->$key))
+                   return array('content'=>"invalid timezone");
            }
         }
 
