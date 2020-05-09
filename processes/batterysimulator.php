@@ -45,6 +45,7 @@ function batterysimulator($dir,$p)
     if (!$model->output('charge_kwh')) return false;
     if (!$model->output('discharge_kwh')) return false;
     if (!$model->output('import_kwh')) return false;
+    if (!$model->output('solar_direct_kwh')) return false;
     
     // Check that intervals are the same
     if ($model->meta['solar']->interval != $model->meta['consumption']->interval) {
@@ -73,7 +74,8 @@ function batterysimulator($dir,$p)
     $charge_kwh = $model->value['charge_kwh'];
     $discharge_kwh = $model->value['discharge_kwh'];
     $import_kwh = $model->value['import_kwh'];
-   
+    $solar_direct_kwh = $model->value['solar_direct_kwh'];
+    
     if (!$recalc) {
          $soc = $model->value['soc']*0.01*$p->capacity;
     }
@@ -95,6 +97,9 @@ function batterysimulator($dir,$p)
         // Limits
         if ($use<0) $use = 0;
         if ($solar<0) $solar = 0;
+        
+        $solar_direct = $solar;
+        if ($solar_direct>$use) $solar_direct = $use;
 
         // Starts the offpeak charge session
         if ($p->offpeak_soc_target>0 && $hour==$p->offpeak_start && $last_hour!=$hour && !$charging_offpeak) {
@@ -156,6 +161,7 @@ function batterysimulator($dir,$p)
         $charge_kwh += ($charge * $interval)/3600000.0;
         $discharge_kwh += ($discharge * $interval)/3600000.0;
         $import_kwh += ($import * $interval)/3600000.0;
+        $solar_direct_kwh += ($solar_direct * $interval)/3600000.0;
         
         $model->write('charge',$charge);
         $model->write('discharge',$discharge);
@@ -165,6 +171,8 @@ function batterysimulator($dir,$p)
         $model->write('charge_kwh',$charge_kwh);
         $model->write('discharge_kwh',$discharge_kwh);
         $model->write('import_kwh',$import_kwh);
+        $model->write('solar_direct_kwh',$solar_direct_kwh);
+        
         $i++;
         if ($i%102400==0) echo ".";
     }
