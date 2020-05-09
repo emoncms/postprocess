@@ -8,7 +8,7 @@
 
 function batterysimulator($dir,$p)
 {
-    $recalc = true;
+    $recalc = false;
         
     // Params ($p for process)
     if (!isset($p->capacity)) return false;
