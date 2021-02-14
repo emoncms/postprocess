@@ -1,8 +1,2 @@
 <?php
-
-    $menu['sidebar']['emoncms'][] = array(
-        'text' => _("Post Process"),
-        'path' => 'postprocess',
-        'icon' => 'spinner11',
-        'order' => 'b2'
-    );
+if ($session["write"]) $menu["setup"]["l2"]['postprocess'] = array("name"=>"Post Process","href"=>"postprocess", "order"=>6, "icon"=>"spinner11");
