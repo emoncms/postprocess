@@ -401,6 +401,23 @@ function postprocess_controller()
         $route->format = "json";
         return array('content'=>$params);
     }
+    
+    if ($route->action == "remove" && $session['write']) {
+        $route->format = "text";
+        
+        if (!isset($_GET['processid'])) return "missing processid parameter";
+        $processid = (int) $_GET['processid'];
+        
+        $processlist = $postprocess->get($session['userid']);
+        
+        if (isset($processlist[$processid])) {
+            array_splice($processlist,$processid,1);
+        } else {
+            return "process does not exist";
+        }
+        $postprocess->set($session['userid'],$processlist);
+        return "process removed";
+    }
 
     if ($route->action == 'logpath') {
         return $settings['log']['location']."/postprocess.log";

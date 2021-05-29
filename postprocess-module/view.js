@@ -246,7 +246,8 @@ function processlist_update()
 
             var points_behind = base_npoints - out_npoints;
             out += "<td>"+points_behind+" points behind</td>";
-            out += "<td><button class='btn runprocess' processid="+z+" >Run process</button></td>";
+            out += "<td><button class='btn runprocess btn-success' processid="+z+" >Run process</button></td>";
+            out += "<td><button class='btn remove-process btn-danger' processid="+z+" ><i class='icon-trash'></i> Remove</button></td>";
             out += "</tr>";
         }
         if (out=="") $("#noprocessesalert").show(); else $("#noprocessesalert").hide();
@@ -293,6 +294,20 @@ $("#processlist").on("click",".runprocess",function(){
         async: false,
         success: function(result) {
             console.log(result);
+        }
+    });
+});
+
+$("#processlist").on("click",".remove-process",function(){
+    var processid = $(this).attr("processid");
+
+    $.ajax({
+        type: "POST",
+        url: path+"postprocess/remove?processid="+processid,
+        dataType: 'text',
+        async: false,
+        success: function(result) {
+            processlist_update()
         }
     });
 });
