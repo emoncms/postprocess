@@ -53,4 +53,9 @@ class PostProcess
         }
         return false;
     }
+    
+    public function clear_all($userid) 
+    {
+    
+    }
 }

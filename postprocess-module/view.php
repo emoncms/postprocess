@@ -34,6 +34,7 @@ pre {
     <th>Parameters</th>
     <th></th>
     <th></th>
+    <th></th>
     
 </tr>
 <tbody id="processlist"></tbody>
