@@ -2,18 +2,6 @@
 
 <script type="text/javascript" src="<?php echo $path; ?>Modules/feed/feed.js"></script>
 <br>
-<style>
-pre {
-    width:100%;
-    height:200px;
-    margin:0px;
-    padding:0px;
-    color:#fff;
-    background-color:#300a24;
-    overflow: scroll;
-    overflow-x: hidden;
-}
-</style>
 
 <h2>Post Processor</h2>
 <p>Rather than process inputs as data arrives in emoncms such as calculating cumulative kWh data from power data with the power to kWh input process, this module can be used to do these kind of processing steps after having recorded base data such as power data for some time. This removes the reliance on setting up everything right in the first instance providing the flexibility to recalculate processed feeds at a later date.</p>
@@ -22,7 +10,7 @@ pre {
 <button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
 <h3>Logger</h3>
 <div id="logpath"></div>
-<pre id="logreply-bound"><div id="logreply"></div></pre>
+<pre id="logreply-bound" class="log"><div id="logreply"></div></pre>
 
 <hr>
 
