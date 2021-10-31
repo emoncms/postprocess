@@ -279,7 +279,7 @@ function postprocess_controller()
                    return array('content'=>"feed already exists with name $newfeedname");
 
                 // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
-                $c = $feed->create($session['userid'],"",$newfeedname,DataType::REALTIME,Engine::PHPFINA,json_decode('{"interval":3600}'));
+                $c = $feed->create($session['userid'],"",$newfeedname,Engine::PHPFINA,json_decode('{"interval":3600}'));
                 if (!$c['success'])
                     return array('content'=>"feed could not be created");
 

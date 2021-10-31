@@ -31,17 +31,14 @@ $("#process_select").change(function(){
        if (processes[process][z]["type"]=="feed") {
             options += "<select class='process_option' option="+z+">";
             //for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
-
-            var datatype = 1;  // 0:UNDEFINED, 1:REALTIME, 2:DAILY, 3:HISTOGRAM
+            
             var feedgroups = [];
             for (n in feeds) {
-                if (feeds[n].datatype == datatype) {
-                    if (parseInt(feeds[n].engine) == 7) continue; // Dont list virtual feed
-                    var group = (feeds[n].tag === null ? "NoGroup" : feeds[n].tag);
-                    if (group!="Deleted") {
-                        if (!feedgroups[group]) feedgroups[group] = []
-                        feedgroups[group].push(feeds[n]);
-                    }
+                if (parseInt(feeds[n].engine) == 7) continue; // Dont list virtual feed
+                var group = (feeds[n].tag === null ? "NoGroup" : feeds[n].tag);
+                if (group!="Deleted") {
+                    if (!feedgroups[group]) feedgroups[group] = []
+                    feedgroups[group].push(feeds[n]);
                 }
             }
             var out = "<option value=-1>CHOOSE FEED:</option>";
