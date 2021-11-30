@@ -87,6 +87,11 @@ function postprocess_controller()
         "removenan"=>array(
             "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),
         ),
+        "remove_morethan_lessthan"=>array(
+            "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),
+            "morethan"=>array("type"=>"value", "short"=>"Remove values above this limit:"),
+            "lessthan"=>array("type"=>"value", "short"=>"Remote values below this limit:")
+        ),
         "liquidorairflow_tokwh"=>array(
             "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),
             "flow"=>array("type"=>"feed", "engine"=>5, "short"=>"flow in m3/h"),
