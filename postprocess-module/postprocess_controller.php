@@ -125,6 +125,22 @@ function postprocess_controller()
             "import_kwh"=>array("type"=>"newfeed", "default"=>"import_kwh", "engine"=>5, "short"=>"Enter grid import kWh feed name:"),
             "solar_direct_kwh"=>array("type"=>"newfeed", "default"=>"solar_direct_kwh", "engine"=>5, "short"=>"Enter solar direct kwh feed name:")
         ),
+        "carnot_cop_simulator"=>array(
+            "heatpump_elec"=>array("type"=>"feed", "engine"=>5, "short"=>"Select heat pump electrical consumption feed:"),
+            "heatpump_flowT"=>array("type"=>"feed", "engine"=>5, "short"=>"Select heat pump flow temperature feed:"),
+            "heatpump_returnT"=>array("type"=>"feed", "engine"=>5, "short"=>"Select heat pump return temperature feed:"),
+            "heatpump_outsideT"=>array("type"=>"feed", "engine"=>5, "short"=>"Select heat pump outside temperature feed:"), 
+                      
+            "condenser_offset"=>array("type"=>"value", "default"=>4.0, "short"=>"Condenser offset"),
+            "refrigerant_offset"=>array("type"=>"value", "default"=>-6.0, "short"=>"Refrigerant offset"),
+            "practical_efficiency_factor"=>array("type"=>"value", "default"=>0.5, "short"=>"Practical efficiency factor"),
+            "running_power_threshold"=>array("type"=>"value", "default"=>100.0, "short"=>"running power threshold"),
+            
+            "heatpump_cop_sim"=>array("type"=>"newfeed", "default"=>"heatpump_cop_sim", "engine"=>5, "short"=>"Simulation of heat pump COP"),
+            "heatpump_heat_sim"=>array("type"=>"newfeed", "default"=>"heatpump_heat_sim", "engine"=>5, "short"=>"Simulation of heat pump heat output"),
+            "heatpump_heat_sim_kwh"=>array("type"=>"newfeed", "default"=>"heatpump_heat_sim_kwh", "engine"=>5, "short"=>"Simulation of heat pump kwh heat output"),
+            "heatpump_flowrate_sim"=>array("type"=>"newfeed", "default"=>"heatpump_flowrate_sim", "engine"=>5, "short"=>"Simulation of flow rate")
+        ),
         "basic_formula"=>array(
             "formula"=>array("type"=>"formula", "short"=>$bfdescription),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name :")

@@ -137,6 +137,9 @@ class ModelHelper
     public $meta = array();
     public $value = array();
     
+    public $start_time = false;
+    public $end_time = false;
+    
     public function __construct($dir,$params) {
         $this->dir = $dir;
         $this->params = $params;
@@ -166,7 +169,12 @@ class ModelHelper
     }
     
     public function input($key) {
-        return $this->load($key,'rb');
+        $result = $this->load($key,'rb');
+        if ($this->start_time===false) $this->start_time = $this->meta[$key]->start_time;
+        else if ($this->meta[$key]->start_time>$this->start_time) $this->start_time = $this->meta[$key]->start_time;
+        if ($this->end_time===false) $this->end_time = $this->meta[$key]->end_time;
+        else if ($this->meta[$key]->end_time<$this->end_time) $this->end_time = $this->meta[$key]->end_time;
+        return $result;
     }
     
     public function output($key) {
@@ -177,7 +185,7 @@ class ModelHelper
     
     public function read($key,$value) {
         $tmp = unpack("f",fread($this->fh[$key],4));
-        if (!is_nan($tmp[1])) $value = $tmp[1];
+        if ($tmp[1]!=null && !is_nan($tmp[1])) $value = $tmp[1];
         return $value;
     }
     
@@ -185,6 +193,15 @@ class ModelHelper
         foreach (array_keys($this->fh) as $key) {
             $pos = floor(($time - $this->meta[$key]->start_time) / $this->meta[$key]->interval);
             fseek($this->fh[$key],$pos*4);
+        }
+    }
+
+    public function seek_to_time_inputs($time) {
+        foreach (array_keys($this->fh) as $key) {
+            if (!isset($this->buffer[$key])) {
+                $pos = floor(($time - $this->meta[$key]->start_time) / $this->meta[$key]->interval);
+                fseek($this->fh[$key],$pos*4);
+            }
         }
     }
     
