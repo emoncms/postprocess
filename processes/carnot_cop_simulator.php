@@ -34,8 +34,6 @@ function carnot_cop_simulator($dir,$p)
     $start_time = $model->start_time;
     $end_time = $model->end_time;
     
-    //$start_time = $end_time-(30*3600*24*12);
-    
     // Note: implementation only allows for same meta for all output feeds
     $model->set_output_meta($start_time,$interval);
     
@@ -77,6 +75,7 @@ function carnot_cop_simulator($dir,$p)
                 $carnot = $p->practical_efficiency_factor*($Tc / $dT);
             }
             $heat = $power * $carnot;
+            if ($returnT>$flowT) $heat *= -1;
         }
         
         $dT = $flowT - $returnT;
