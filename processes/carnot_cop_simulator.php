@@ -38,7 +38,7 @@ function carnot_cop_simulator($dir,$p)
     $model->set_output_meta($start_time,$interval);
     
     // Simulation start time
-    if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time;
+    if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time-$interval;
     
     if ($start_time==$end_time) {
         print "Nothing to do, data already up to date\n";
