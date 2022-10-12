@@ -55,10 +55,9 @@ function batterysimulator($dir,$p)
 
     // Work out output data interval and start_time 
     $interval = $model->meta['solar']->interval;
-    $start_time = $model->meta['solar']->start_time;
-    if ($model->meta['consumption']->start_time>$start_time) $start_time = $model->meta['consumption']->start_time;
-    $end_time = $model->meta['solar']->end_time;
-    if ($model->meta['consumption']->end_time<$end_time) $end_time = $model->meta['consumption']->end_time;
+
+    $start_time = $model->start_time;
+    $end_time = $model->end_time;
     
     // Note: implementation only allows for same meta for all output feeds
     $model->set_output_meta($start_time,$interval);
@@ -66,19 +65,33 @@ function batterysimulator($dir,$p)
     // Process new data since last run
     if (!$recalc) $start_time = $model->meta['soc']->end_time;
     
-    $model->seek_to_time($start_time);
-    
+    if ($start_time==$end_time) {
+        print "Nothing to do, data already up to date\n";
+        return true;
+    }
+        
     $solar = 0;
     $use = 0;
     $soc = $p->capacity * 0.5;
-    $charge_kwh = $model->value['charge_kwh'];
-    $discharge_kwh = $model->value['discharge_kwh'];
-    $import_kwh = $model->value['import_kwh'];
-    $solar_direct_kwh = $model->value['solar_direct_kwh'];
+    $charge_kwh = 0;
+    $discharge_kwh = 0;
+    $import_kwh = 0;
+    $solar_direct_kwh = 0;
+
+    // Get starting values
+    $model->seek_to_time($start_time);    
+    if ($model->meta['charge_kwh']->npoints) $charge_kwh = $model->read('charge_kwh',$charge_kwh);
+    if ($model->meta['discharge_kwh']->npoints) $charge_kwh = $model->read('discharge_kwh',$charge_kwh);
+    if ($model->meta['import_kwh']->npoints) $charge_kwh = $model->read('import_kwh',$charge_kwh);
+    if ($model->meta['solar_direct_kwh']->npoints) $charge_kwh = $model->read('solar_direct_kwh',$charge_kwh);
     
-    if (!$recalc) {
-         $soc = $model->value['soc']*0.01*$p->capacity;
+    if ($model->meta['soc']->npoints) {
+        $soc = $model->read('soc',$soc);
+        $soc = $soc*0.01*$p->capacity;
     }
+
+    // Reset again    
+    $model->seek_to_time($start_time);
     
     $date->setTimestamp($start_time);
     $hour = $date->format("H")*1;
@@ -87,6 +100,7 @@ function batterysimulator($dir,$p)
     $i=0;
     for ($time=$start_time; $time<$end_time; $time+=$interval) 
     {
+        // $model->seek_to_time_inputs($time); not required as input feed intervals are the same
         $last_hour = $hour;
         $date->setTimestamp($time);
         $hour = $date->format("H")*1;

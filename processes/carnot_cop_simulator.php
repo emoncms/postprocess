@@ -4,7 +4,7 @@
 
 function carnot_cop_simulator($dir,$p)
 {
-    $recalc = true;
+    $recalc = false;
         
     // Params ($p for process)
     if (!isset($p->condenser_offset)) return false;
@@ -37,19 +37,27 @@ function carnot_cop_simulator($dir,$p)
     // Note: implementation only allows for same meta for all output feeds
     $model->set_output_meta($start_time,$interval);
     
-    // Process new data since last run
-    // if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time;
+    // Simulation start time
+    if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time;
     
-    $model->seek_to_time($start_time);
-    
-    $heat_kwh = 0;
-    
-    // if (!$recalc) $heat_kwh = $model->value['heatpump_heat_sim_kwh'];
-    
+    if ($start_time==$end_time) {
+        print "Nothing to do, data already up to date\n";
+        return true;
+    }
+        
     $power = 0;
     $flowT = 0;
     $returnT = 0;
     $outsideT = 0;
+    $heat_kwh = 0;
+
+    // get cumulative kwh value
+    $model->seek_to_time($start_time);
+    if ($model->meta['heatpump_heat_sim']->npoints) {
+        $heat_kwh = $model->read('heatpump_heat_sim_kwh',$heat_kwh);
+    }
+    // reset again
+    $model->seek_to_time($start_time);
     
     $i=0;
     for ($time=$start_time; $time<$end_time; $time+=$interval) 
