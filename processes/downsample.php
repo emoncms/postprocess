@@ -2,28 +2,28 @@
 
 function downsample($dir,$processitem)
 {
-    if (!isset($processitem->input)) return false;
+    if (!isset($processitem->feed)) return false;
     if (!isset($processitem->new_interval)) return false;
     //if (!isset($processitem->mode)) return false;
-    if (!isset($processitem->output)) return false;
+    if (!isset($processitem->backup)) return false;
     
-    $input = $processitem->input;
+    $feed = $processitem->feed;
     $new_interval = $processitem->new_interval;
     //$mode = $processitem->mode;
-    $output = $processitem->output;
+    $backup = $processitem->backup;
     // --------------------------------------------------
     
-    if (!file_exists($dir.$input.".meta")) {
-        print "input file $input.meta does not exist\n";
+    if (!file_exists($dir.$feed.".meta")) {
+        print "input file $feed.meta does not exist\n";
         return false;
     }
     
-    if (!file_exists($dir.$output.".meta")) {
-        print "output file $output.meta does not exist\n";
+    if (!file_exists($dir.$backup.".meta")) {
+        print "output file $backup.meta does not exist\n";
         return false;
     }
 
-    $input_meta = getmeta($dir,$input);
+    $input_meta = getmeta($dir,$feed);
     
     if ($input_meta->interval>=$new_interval) { 
         print "feed interval must be less than new interval\n";
@@ -40,16 +40,11 @@ function downsample($dir,$processitem)
     $output_meta->interval = $new_interval;
     $output_meta->start_time = floor($input_meta->start_time/$new_interval)*$new_interval;
     
-    createmeta($dir,$output,$output_meta);
-    $output_meta = getmeta($dir,$output);
-
-    if (!$input_fh = @fopen($dir.$input.".dat", 'rb')) {
-        echo "ERROR: could not open $dir $input.dat\n";
-        return false;
-    }
+    copy($dir.$feed.".meta",$dir.$backup.".meta");
+    copy($dir.$feed.".dat",$dir.$backup.".dat");
     
-    if (!$output_fh = @fopen($dir.$output.".dat", 'w')) {
-        echo "ERROR: could not open $dir $output.dat\n";
+    if (!$input_fh = @fopen($dir.$feed.".dat", 'rb')) {
+        echo "ERROR: could not open $dir $feed.dat\n";
         return false;
     }
     
@@ -74,8 +69,6 @@ function downsample($dir,$processitem)
         
         $time = $input_meta->start_time + ($n*$input_meta->interval);
         $time_interval = floor($time/$new_interval)*$new_interval;
-
-
         
         // print $time." ".$time_interval." ".$input_tmp[1]." ".($interval_sum/$interval_n)."\n";
         
@@ -99,20 +92,26 @@ function downsample($dir,$processitem)
         
         $last_interval = $time_interval;
     }
-    
+    fclose($input_fh);
+       
+    if (!$output_fh = @fopen($dir.$feed.".dat", 'w')) {
+        echo "ERROR: could not open $dir $feed.dat\n";
+        return false;
+    }
     fwrite($output_fh,$buffer);
-    
+    fclose($output_fh);
+
     $byteswritten = strlen($buffer);
     print "bytes written: ".$byteswritten."\n";
-    fclose($output_fh);
-    fclose($input_fh);
+    
+    createmeta($dir,$feed,$output_meta);
     
     $time = $input_meta->start_time + ($input_meta->npoints * $input_meta->interval);
     
     if ($byteswritten>0) {
         if (!is_nan($mean)) {
             print "last time value: ".$time." ".$mean."\n";
-            updatetimevalue($output,$time,$mean);
+            updatetimevalue($feed,$time,$mean);
         }
     }
     return true;

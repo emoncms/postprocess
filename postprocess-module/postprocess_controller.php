@@ -62,9 +62,9 @@ function postprocess_controller()
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
         ),
         "downsample"=>array(
-            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
+            "feed"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to downsample:"),
             "new_interval"=>array("type"=>"value", "short"=>"New feed interval:"),
-            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+            "backup"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter backup feed name:", "nameappend"=>"")
         ),
         "allowpositive"=>array(
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
