@@ -61,6 +61,11 @@ function postprocess_controller()
             "scale"=>array("type"=>"value", "short"=>"Scale by:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
         ),
+        "downsample"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
+            "new_interval"=>array("type"=>"value", "short"=>"New feed interval:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
         "allowpositive"=>array(
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
