@@ -66,7 +66,15 @@ function postprocess_controller()
             "new_interval"=>array("type"=>"value", "short"=>"New feed interval:"),
             "backup"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter backup feed name:", "nameappend"=>"")
         ),
-        "allowpositive"=>array(
+        "allownegative"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
+                "allowpositive"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        ),
+        "invertnegative"=>array(
             "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
             "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
         ),
