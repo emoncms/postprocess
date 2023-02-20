@@ -217,7 +217,26 @@ class ModelHelper
             if ($this->meta[$key]->end_time==0) $this->meta[$key]->end_time = $start_time;
         }
     }
-    
+
+    public function output_all() {
+        $total_size = 0;
+        foreach (array_keys($this->buffer) as $key) {
+            $size = strlen($this->buffer[$key]);
+            if ($size>0) {
+                $feedid = $this->params->$key;
+                // Write meta data
+                createmeta($this->dir,$feedid,$this->meta[$key]);
+                // Write data
+                fwrite($this->fh[$key],$this->buffer[$key]);
+                $this->buffer[$key]="";
+                $total_size += $size;
+                // Update feed last time and value
+                updatetimevalue($feedid,time(),$this->value[$key]);
+            }
+        }
+        return $total_size;
+    }
+
     public function save_all() {
         $total_size = 0;
         foreach (array_keys($this->buffer) as $key) {

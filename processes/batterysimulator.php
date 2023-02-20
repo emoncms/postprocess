@@ -188,7 +188,11 @@ function batterysimulator($dir,$p)
         $model->write('solar_direct_kwh',$solar_direct_kwh);
         
         $i++;
-        if ($i%102400==0) echo ".";
+	if ($i%102400==0) {
+	   echo ".";
+           $model->output_all();
+           usleep(250); // sleep to give the feedwriter a chance
+	}
     }
     echo "\n";
     
