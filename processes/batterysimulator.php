@@ -64,6 +64,7 @@ function batterysimulator($dir,$p)
     
     // Process new data since last run
     if (!$recalc) $start_time = $model->meta['soc']->end_time-$interval;
+    if ($start_time<$model->start_time) $start_time = $model->start_time;
     
     if ($start_time==$end_time) {
         print "Nothing to do, data already up to date\n";
