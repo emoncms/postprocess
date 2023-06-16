@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_remove_morethan_lessthan
+class PostProcess_remove_morethan_lessthan extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"remove_morethan_lessthan",
@@ -23,15 +16,11 @@ class PostProcess_remove_morethan_lessthan
 
     public function process($processitem)
     {
-        $dir = $this->dir;
+        if (!$this->validate($processitem)) return false;
 
-        if (!isset($processitem->feedid)) return false;
+        $dir = $this->dir;
         $id = $processitem->feedid;
-        
-        if (!isset($processitem->morethan)) return false;
         $morethan = $processitem->morethan;
-        
-        if (!isset($processitem->lessthan)) return false;
         $lessthan = $processitem->lessthan;
     
         if (!$fh = @fopen($dir.$id.".dat", 'c+')) {

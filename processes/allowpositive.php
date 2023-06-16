@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_allowpositive
+class PostProcess_allowpositive extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"allowpositive",
@@ -22,24 +15,11 @@ class PostProcess_allowpositive
 
     public function process($processitem)
     {
+        if (!$this->validate($processitem)) return false;
+
         $dir = $this->dir;
-        
-        if (!isset($processitem->input)) return false;
-        if (!isset($processitem->output)) return false;
-        
         $input = $processitem->input;
         $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$input.".meta")) {
-            print "input file $input.meta does not exist\n";
-            return false;
-        }
-        
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         $input_meta = getmeta($dir,$input);
         

@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_removeresets
+class PostProcess_removeresets extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"removeresets",
@@ -23,26 +16,12 @@ class PostProcess_removeresets
 
     public function process($processitem)
     {
+        if (!$this->validate($processitem)) return false;
+
         $dir = $this->dir;
-        
-        if (!isset($processitem->input)) return false;
-        if (!isset($processitem->maxrate)) return false;
-        if (!isset($processitem->output)) return false;
-        
         $input = $processitem->input;
         $maxrate = $processitem->maxrate;
         $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$input.".meta")) {
-            print "input file $input.meta does not exist\n";
-            return false;
-        }
-
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         $im = getmeta($dir,$input);
         $om = getmeta($dir,$output);

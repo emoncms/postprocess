@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_powertokwh
+class PostProcess_powertokwh extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"powertokwh",
@@ -21,31 +14,14 @@ class PostProcess_powertokwh
         );
     }
 
-    public function process($processitem)
+    public function process($p)
     {
-        $dir = $this->dir;
-
-        if (!isset($processitem->input)) return false;
-        if (!isset($processitem->output)) return false;
+        if (!$this->validate($p)) return false;
         
-        $input = $processitem->input;
-        $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$input.".meta")) {
-            print "input file $input.meta does not exist\n";
-            return false;
-        }
-
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
-
-        $im = getmeta($dir,$input);
+        $im = getmeta($this->dir,$p->input);
         print "input meta: ".json_encode($im)."\n";
         
-        $om = getmeta($dir,$output);
+        $om = getmeta($this->dir,$p->output);
         print "output meta: ".json_encode($om)."\n";
         /*
         if ($im->interval != $om->interval) {
@@ -59,15 +35,15 @@ class PostProcess_powertokwh
         }
         
         // Copies over start_time to output meta file
-        createmeta($dir,$output,$im);
+        createmeta($this->dir,$p->output,$im);
 
-        if (!$if = @fopen($dir.$input.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $input.dat\n";
+        if (!$if = @fopen($this->dir.$p->input.".dat", 'rb')) {
+            echo "ERROR: could not open $this->dir $p->input.dat\n";
             return false;
         }
         
-        if (!$of = @fopen($dir.$output.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $output.dat\n";
+        if (!$of = @fopen($this->dir.$p->output.".dat", 'c+')) {
+            echo "ERROR: could not open $this->dir $p->output.dat\n";
             return false;
         }
         
@@ -120,7 +96,7 @@ class PostProcess_powertokwh
         $value = $wh * 0.001;
         
         print "last time value: ".$time." ".$value."\n";
-        updatetimevalue($output,$time,$value);
+        updatetimevalue($p->output,$time,$value);
         
         return true;
     }

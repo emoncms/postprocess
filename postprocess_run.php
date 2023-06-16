@@ -67,8 +67,3 @@ while(true){
     }
     sleep(1);
 }
-
-function updatetimevalue($id,$time,$value){
-    global $redis;
-    $redis->hMset("feed:$id", array('value' => $value, 'time' => $time));
-}

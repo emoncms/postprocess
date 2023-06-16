@@ -2,15 +2,8 @@
 
 // these functions could ultimately be integrated into a class
 
-class PostProcess_basic_formula
+class PostProcess_basic_formula extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
 
         $bfdescription="Enter your formula as a symbolic expression - allows brackets and the max function <br>
@@ -34,6 +27,8 @@ class PostProcess_basic_formula
 
     public function process($processitem)
     {
+        if (!$this->validate($processitem)) return false;
+
         $dir = $this->dir;
         // regular expression to recognize a float or int value
         // use of ?: not to perturb things in creating useless references

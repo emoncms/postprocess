@@ -7,15 +7,8 @@
 // No charging at night included
 
 // These functions could ultimately be integrated into a class
-class PostProcess_batterysimulator
+class PostProcess_batterysimulator extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"batterysimulator",
@@ -44,17 +37,10 @@ class PostProcess_batterysimulator
 
     public function process($p)
     {
+        if (!$this->validate($p)) return false;
+
         $dir = $this->dir;
         $recalc = false;
-            
-        // Params ($p for process)
-        if (!isset($p->capacity)) return false;
-        if (!isset($p->max_charge_rate)) return false;
-        if (!isset($p->max_discharge_rate)) return false;
-        if (!isset($p->round_trip_efficiency)) return false;
-        if (!isset($p->timezone)) $p->timezone = "UTC";
-        if (!isset($p->offpeak_soc_target)) $p->offpeak_soc_target = 0;  // 80%
-        if (!isset($p->offpeak_start)) $p->offpeak_start = 3;             // 3am
         
         if ($p->round_trip_efficiency>1.0) $p->round_trip_efficiency = 1.0;
         if ($p->round_trip_efficiency<0.1) $p->round_trip_efficiency = 0.1;

@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_constantflow_tokwh
-{
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-        
+class PostProcess_constantflow_tokwh extends PostProcess_common
+{       
     public function description() {
         return array(
             "name"=>"constantflow_tokwh",
@@ -25,6 +18,8 @@ class PostProcess_constantflow_tokwh
 
     public function process($processitem)
     {
+        if (!$this->validate($processitem)) return false;
+
         $dir = $this->dir;
 
         $vhc = (float) $processitem->vhc;

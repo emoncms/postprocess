@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_trimfeedstart
+class PostProcess_trimfeedstart extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"trimfeedstart",
@@ -22,21 +15,13 @@ class PostProcess_trimfeedstart
 
     public function process($processitem)
     {
-        $dir = $this->dir;
+        if (!$this->validate($processitem)) return false;
 
-        if (!isset($processitem->feedid)) return false;
-        if (!isset($processitem->trimtime)) return false;
+        $dir = $this->dir;
         
         $feedid = $processitem->feedid;
         $trimtime = $processitem->trimtime;
         print "TRIM FEED: $feedid, trimtime=$trimtime\n";
-        
-        // --------------------------------------------------
-
-        if (!file_exists($dir.$feedid.".meta")) {
-            print "input file $feedid.meta does not exist\n";
-            return false;
-        }
         
         $meta = getmeta($dir,$feedid);
 

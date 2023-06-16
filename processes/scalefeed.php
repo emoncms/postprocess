@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_scalefeed
+class PostProcess_scalefeed extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"scalefeed",
@@ -23,26 +16,12 @@ class PostProcess_scalefeed
 
     public function process($processitem)
     {
-        $dir = $this->dir;
+        if (!$this->validate($processitem)) return false;
 
-        if (!isset($processitem->input)) return false;
-        if (!isset($processitem->scale)) return false;
-        if (!isset($processitem->output)) return false;
-        
+        $dir = $this->dir;
         $input = $processitem->input;
         $scale = $processitem->scale;
         $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$input.".meta")) {
-            print "input file $input.meta does not exist\n";
-            return false;
-        }
-        
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         $input_meta = getmeta($dir,$input);
         

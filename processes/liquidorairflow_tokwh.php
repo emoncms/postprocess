@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_liquidorairflow_tokwh
+class PostProcess_liquidorairflow_tokwh extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"liquidorairflow_tokwh",

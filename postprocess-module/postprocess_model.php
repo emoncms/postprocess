@@ -62,8 +62,11 @@ class PostProcess
     // Get all processes
     public function get_processes($dir) {
 
+        require_once($dir."/common.php");
+
         $processes = array();
     
+        $dir = $dir."/processes";
         $files = scandir($dir);
         for ($i=2; $i<count($files); $i++)
         {

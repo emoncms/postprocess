@@ -19,7 +19,7 @@ function postprocess_controller()
     $feed = new Feed($mysqli,$redis,$settings['feed']);
 
     // Load available processes descriptions
-    $processes = $postprocess->get_processes("$linked_modules_dir/postprocess/processes");
+    $processes = $postprocess->get_processes("$linked_modules_dir/postprocess");
 
     // -------------------------------------------------------------------------
     // VIEW

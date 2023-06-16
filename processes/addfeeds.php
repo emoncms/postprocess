@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_addfeeds
+class PostProcess_addfeeds extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir)
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"addfeeds",
@@ -23,31 +16,12 @@ class PostProcess_addfeeds
 
     public function process($processitem)
     {
-        $dir = $this->dir;
-
-        if (!isset($processitem->feedA)) return false;
-        if (!isset($processitem->feedB)) return false;
-        if (!isset($processitem->output)) return false;
+        if (!$this->validate($processitem)) return false;
         
+        $dir = $this->dir;
         $feedA = $processitem->feedA;
         $feedB = $processitem->feedB;
         $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$feedA.".meta")) {
-            print "input file $feedA.meta does not exist\n";
-            return false;
-        }
-
-        if (!file_exists($dir.$feedB.".meta")) {
-            print "input file $feedB.meta does not exist\n";
-            return false;
-        }
-        
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         $feedA_meta = getmeta($dir,$feedA);
         $feedB_meta = getmeta($dir,$feedB);

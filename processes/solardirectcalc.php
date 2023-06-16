@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_solardirectcalc
+class PostProcess_solardirectcalc extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"solardirectcalc",
@@ -23,31 +16,13 @@ class PostProcess_solardirectcalc
 
     public function process($processitem)
     {
-        $dir = $this->dir;
+        if (!$this->validate($processitem)) return false;
 
-        if (!isset($processitem->consumption)) return false;
-        if (!isset($processitem->generation)) return false;
-        if (!isset($processitem->output)) return false;
+        $dir = $this->dir;
         
         $feedA = $processitem->consumption;
         $feedB = $processitem->generation;
         $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$feedA.".meta")) {
-            print "input file $feedA.meta does not exist\n";
-            return false;
-        }
-
-        if (!file_exists($dir.$feedB.".meta")) {
-            print "input file $feedB.meta does not exist\n";
-            return false;
-        }
-        
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         $feedA_meta = getmeta($dir,$feedA);
         $feedB_meta = getmeta($dir,$feedB);

@@ -7,15 +7,8 @@
 // - Does not work with daily or monthly intervals that are timezone dependent
 // ---------------------------------------------------------------------------------------
 
-class PostProcess_average
+class PostProcess_average extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"average",
@@ -30,27 +23,14 @@ class PostProcess_average
 
     public function process($processitem)
     {
+        if (!$this->validate($processitem)) return false;
+
         $dir = $this->dir;
-        
-        if (!isset($processitem->input)) return false;
-        if (!isset($processitem->output)) return false;
-        if (!isset($processitem->interval)) return false;
         
         // Input and output feed ids
         $input = $processitem->input;
         $output = $processitem->output;
         $output_interval = $processitem->interval;
-        
-        // Check if feeds exist
-        if (!file_exists($dir.$input.".meta")) {
-            print "input file $input.meta does not exist\n";
-            return false;
-        }
-
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         // Load feed meta data
         $im = getmeta($dir,$input);

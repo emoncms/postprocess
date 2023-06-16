@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_to_signed
+class PostProcess_to_signed extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"to_signed",
@@ -21,9 +14,9 @@ class PostProcess_to_signed
 
     public function process($processitem)
     {
+        if (!$this->validate($processitem)) return false;
+
         $dir = $this->dir;
-        
-        if (!isset($processitem->feedid)) return false;
         $id = $processitem->feedid;
     
         if (!$fh = @fopen($dir.$id.".dat", 'c+')) {

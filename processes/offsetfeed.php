@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_offsetfeed
+class PostProcess_offsetfeed extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"offsetfeed",
@@ -23,26 +16,12 @@ class PostProcess_offsetfeed
 
     public function process($processitem)
     {
-        $dir = $this->dir;
+        if (!$this->validate($processitem)) return false;
 
-        if (!isset($processitem->input)) return false;
-        if (!isset($processitem->offset)) return false;
-        if (!isset($processitem->output)) return false;
-        
+        $dir = $this->dir;
         $input = $processitem->input;
         $offset = $processitem->offset;
         $output = $processitem->output;
-        // --------------------------------------------------
-        
-        if (!file_exists($dir.$input.".meta")) {
-            print "input file $input.meta does not exist\n";
-            return false;
-        }
-        
-        if (!file_exists($dir.$output.".meta")) {
-            print "output file $output.meta does not exist\n";
-            return false;
-        }
 
         $input_meta = getmeta($dir,$input);
         

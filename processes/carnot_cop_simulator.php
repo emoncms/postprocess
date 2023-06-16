@@ -2,15 +2,8 @@
 
 // Simulates heat pump heat output and COP based on flow temperature, outside temperature and power consumption
 
-class PostProcess_carnot_cop_simulator
+class PostProcess_carnot_cop_simulator extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir)
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"carnot_cop_simulator",
@@ -36,14 +29,10 @@ class PostProcess_carnot_cop_simulator
 
     public function process($p)
     {
+        if (!$this->validate($p)) return false;
+
         $dir = $this->dir;
         $recalc = false;
-            
-        // Params ($p for process)
-        if (!isset($p->condenser_offset)) return false;
-        if (!isset($p->refrigerant_offset)) return false;
-        if (!isset($p->practical_efficiency_factor)) return false;
-        if (!isset($p->running_power_threshold)) return false;
         
         if ($p->practical_efficiency_factor>1.0) $p->practical_efficiency_factor = 1.0;
         if ($p->practical_efficiency_factor<0.0) $p->practical_efficiency_factor = 0.0;

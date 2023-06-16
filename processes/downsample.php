@@ -1,14 +1,7 @@
 <?php
 
-class PostProcess_downsample
+class PostProcess_downsample extends PostProcess_common
 {
-    private $dir;
-
-    public function __construct($dir) 
-    {
-        $this->dir = $dir;
-    }
-
     public function description() {
         return array(
             "name"=>"downsample",
@@ -23,29 +16,13 @@ class PostProcess_downsample
 
     public function process($processitem)
     {
-        $dir = $this->dir;
+        if (!$this->validate($processitem)) return false;
 
-        if (!isset($processitem->feed)) return false;
-        if (!isset($processitem->new_interval)) return false;
-        //if (!isset($processitem->mode)) return false;
-        if (!isset($processitem->backup)) return false;
-        
+        $dir = $this->dir;
         $feed = $processitem->feed;
         $new_interval = $processitem->new_interval;
-        //$mode = $processitem->mode;
         $backup = $processitem->backup;
-        // --------------------------------------------------
         
-        if (!file_exists($dir.$feed.".meta")) {
-            print "input file $feed.meta does not exist\n";
-            return false;
-        }
-        
-        if (!file_exists($dir.$backup.".meta")) {
-            print "output file $backup.meta does not exist\n";
-            return false;
-        }
-
         $input_meta = getmeta($dir,$feed);
         
         if ($input_meta->interval>=$new_interval) { 
