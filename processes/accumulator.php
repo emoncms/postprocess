@@ -1,5 +1,18 @@
 <?php
 
+// These functions could ultimately be integrated into a class
+
+function accumulator_description() {
+    return array(
+        "name"=>"accumulator",
+        "description"=>"Accumulate a feed",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+        )
+    );
+}
+
 function accumulator($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

@@ -1,5 +1,18 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function trimfeedstart_description() {
+    return array(
+        "name"=>"trimfeedstart",
+        "description"=>"Trim the start of a feed",
+        "settings"=>array(
+            "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to trim:"),
+            "trimtime"=>array("type"=>"value", "short"=>"Enter start time to trim from:")
+        )
+    );
+}
+
 function trimfeedstart($dir,$processitem)
 {
     if (!isset($processitem->feedid)) return false;

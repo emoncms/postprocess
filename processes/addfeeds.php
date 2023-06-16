@@ -1,5 +1,19 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function addfeeds_description() {
+    return array(
+        "name"=>"addfeeds",
+        "description"=>"Add two feeds together",
+        "settings"=>array(
+            "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed A:"),
+            "feedB"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed B:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function addfeeds($dir,$processitem)
 {
     if (!isset($processitem->feedA)) return false;

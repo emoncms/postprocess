@@ -1,5 +1,19 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function scalefeed_description() {
+    return array(
+        "name"=>"scalefeed",
+        "description"=>"Scale a feed",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
+            "scale"=>array("type"=>"value", "short"=>"Scale by:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function scalefeed($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

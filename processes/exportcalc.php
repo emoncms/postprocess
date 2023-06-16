@@ -1,5 +1,19 @@
 <?php
 
+// These functions could ultimately be integrated into a class
+
+function exportcalc_description() {
+    return array(
+        "name"=>"exportcalc",
+        "description"=>"Export a calculation",
+        "settings"=>array(
+            "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
+            "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter export feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function exportcalc($dir,$processitem)
 {
     if (!isset($processitem->consumption)) return false;

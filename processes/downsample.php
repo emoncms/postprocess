@@ -1,5 +1,19 @@
 <?php
 
+// These functions could ultimately be integrated into a class
+
+function downsample_description() {
+    return array(
+        "name"=>"downsample",
+        "description"=>"Downsample a feed",
+        "settings"=>array(
+            "feed"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to downsample:"),
+            "new_interval"=>array("type"=>"value", "short"=>"New feed interval:"),
+            "backup"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter backup feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function downsample($dir,$processitem)
 {
     if (!isset($processitem->feed)) return false;

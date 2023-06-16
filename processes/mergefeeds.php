@@ -1,5 +1,19 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function mergefeeds_description() {
+    return array(
+        "name"=>"mergefeeds",
+        "description"=>"Merge two feeds together",
+        "settings"=>array(
+            "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed A:"),
+            "feedB"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed B:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function mergefeeds($dir,$processitem)
 {
     if (!isset($processitem->feedA)) return false;

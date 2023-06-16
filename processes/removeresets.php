@@ -1,5 +1,19 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function removeresets_description() {
+    return array(
+        "name"=>"removeresets",
+        "description"=>"Remove resets from a feed",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "maxrate"=>array("type"=>"value", "short"=>"Max accumulation rate:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+        )
+    );
+}
+
 function removeresets($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

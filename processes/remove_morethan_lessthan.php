@@ -1,5 +1,19 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function remove_morethan_lessthan_description() {
+    return array(
+        "name"=>"remove_morethan_lessthan",
+        "description"=>"Remove values more than or less than a certain value",
+        "settings"=>array(
+            "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),
+            "morethan"=>array("type"=>"value", "short"=>"Remove values above this limit:"),
+            "lessthan"=>array("type"=>"value", "short"=>"Remote values below this limit:")
+        )
+    );
+}
+
 function remove_morethan_lessthan($dir,$processitem)
 {
     if (!isset($processitem->feedid)) return false;

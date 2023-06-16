@@ -58,4 +58,34 @@ class PostProcess
     {
     
     }
+
+    // Get all processes
+    public function get_processes($dir) {
+
+        $processes = array();
+    
+        $files = scandir($dir);
+        for ($i=2; $i<count($files); $i++)
+        {
+            if (substr($files[$i],-4)==".php" && is_file($dir."/".$files[$i]) && !is_dir($dir."/".$files[$i])) {
+                $filename = $files[$i];
+                require_once($dir."/".$filename);
+    
+                $process_name = str_replace(".php","",$filename);
+                $process_description_fn = $process_name."_description";
+    
+                // check that the function exists
+                if (!function_exists($process_description_fn)) {
+                    print "ERROR: function $process_description_fn does not exist\n";
+                } else {
+                    $process_description = $process_description_fn();
+                    if (isset($process_description['name']) && isset($process_description['settings'])) {
+                        $processes[$process_description['name']] = $process_description['settings'];
+                    }
+                }
+            }
+        }
+    
+        return $processes;
+    }
 }

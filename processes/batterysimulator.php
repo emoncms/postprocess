@@ -6,6 +6,34 @@
 // Fill and empty battery as soon as possible
 // No charging at night included
 
+// These functions could ultimately be integrated into a class
+
+function batterysimulator_description() {
+    return array(
+        "name"=>"batterysimulator",
+        "description"=>"Basic solar battery simulator",
+        "settings"=>array(
+            "solar"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar feed:"),
+            "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption feed:"),
+            "capacity"=>array("type"=>"value", "default"=>4.4, "short"=>"Usable battery capacity in kWh"),
+            "max_charge_rate"=>array("type"=>"value", "default"=>2500.0, "short"=>"Max charge rate in Watts"),
+            "max_discharge_rate"=>array("type"=>"value", "default"=>2500.0, "short"=>"Max discharge rate in Watts"),
+            "round_trip_efficiency"=>array("type"=>"value", "default"=>0.9, "short"=>"Round trip efficiency 0.9 = 90%"),
+            "timezone"=>array("type"=>"timezone", "default"=>"Europe/London", "short"=>"Timezone for offpeak charging"),
+            "offpeak_soc_target"=>array("type"=>"value", "default"=>0, "short"=>"Offpeak charging SOC target in % (0 = turn off)"),
+            "offpeak_start"=>array("type"=>"value", "default"=>3, "short"=>"Offpeak charging start time"),
+            "charge"=>array("type"=>"newfeed", "default"=>"battery_charge", "engine"=>5, "short"=>"Enter battery charge feed name:"),
+            "discharge"=>array("type"=>"newfeed", "default"=>"battery_discharge", "engine"=>5, "short"=>"Enter battery discharge feed name:"),
+            "soc"=>array("type"=>"newfeed", "default"=>"battery_soc", "engine"=>5, "short"=>"Enter battery SOC feed name:"),
+            "import"=>array("type"=>"newfeed", "default"=>"import", "engine"=>5, "short"=>"Enter grid import feed name:"),
+            "charge_kwh"=>array("type"=>"newfeed", "default"=>"battery_charge_kwh", "engine"=>5, "short"=>"Enter battery charge kWh feed name:"),
+            "discharge_kwh"=>array("type"=>"newfeed", "default"=>"battery_discharge_kwh", "engine"=>5, "short"=>"Enter battery discharge kWh feed name:"),
+            "import_kwh"=>array("type"=>"newfeed", "default"=>"import_kwh", "engine"=>5, "short"=>"Enter grid import kWh feed name:"),
+            "solar_direct_kwh"=>array("type"=>"newfeed", "default"=>"solar_direct_kwh", "engine"=>5, "short"=>"Enter solar direct kwh feed name:")
+        )
+    );
+}
+
 function batterysimulator($dir,$p)
 {
     $recalc = false;

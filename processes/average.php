@@ -6,6 +6,20 @@
 // - Ideal for coverting 5s data feeds to 10s, or 10s data to half hourly averages
 // - Does not work with daily or monthly intervals that are timezone dependent
 // ---------------------------------------------------------------------------------------
+
+// These functions could ultimately be integrated into a class
+function average_description() {
+    return array(
+        "name"=>"average",
+        "description"=>"Average a feed",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:"),
+            "interval"=>array("type"=>"value", "short"=>"Interval of output feed (seconds):")
+        )
+    );
+}
+
 function average($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

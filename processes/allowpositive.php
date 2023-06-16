@@ -1,5 +1,18 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function allowpositive_description() {
+    return array(
+        "name"=>"allowpositive",
+        "description"=>"Allow only positive values",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function allowpositive($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

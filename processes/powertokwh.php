@@ -1,5 +1,43 @@
 <?php
 
+/*
+class PostProcess_powertokwh
+{
+    private $dir;
+    private $settings;
+
+    public function __construct($dir) 
+    {
+        $this->dir = $dir;
+    }
+
+    public function description() {
+        return array(
+            "name"=>"powertokwh",
+            "description"=>"Convert power feed to kWh feed",
+            "settings"=>array(
+                "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+                "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+            )
+        );
+    }
+
+    public function process() {
+        return powertokwh($this->dir,$this->settings);
+    }
+}*/
+
+function powertokwh_description() {
+    return array(
+        "name"=>"powertokwh",
+        "description"=>"Convert power feed to kWh feed",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:")
+        )
+    );
+}
+
 function powertokwh($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

@@ -1,5 +1,19 @@
 <?php
 
+// these functions could ultimately be integrated into a class
+
+function offsetfeed_description() {
+    return array(
+        "name"=>"offsetfeed",
+        "description"=>"Offset a feed by a constant value",
+        "settings"=>array(
+            "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to apply offset:"),
+            "offset"=>array("type"=>"value", "short"=>"Offset by:"),
+            "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:", "nameappend"=>"")
+        )
+    );
+}
+
 function offsetfeed($dir,$processitem)
 {
     if (!isset($processitem->input)) return false;

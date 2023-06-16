@@ -1,5 +1,17 @@
 <?php
 
+// These functions could ultimately be integrated into a class
+
+function removenan_description() {
+    return array(
+        "name"=>"removenan",
+        "description"=>"Remove NaN values from a feed",
+        "settings"=>array(
+            "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),
+        )
+    );
+}
+
 function removenan($dir,$processitem)
 {
     if (!isset($processitem->feedid)) return false;
