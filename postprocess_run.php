@@ -22,15 +22,17 @@ for ($i=2; $i<count($files); $i++) {
 
     // compile process list
     $process = str_replace(".php","",$files[$i]);
-    $processes[] = $process;
     
     // full file location and name
     $process_file = $basedir."/processes/".$process.".php";
     
     // Include the process file and check that process function exists
     require $process_file;
-    if (!function_exists($process)) {
-        echo "Error: missing process function: $process\n"; die;
+    if (class_exists("PostProcess_".$process)) {
+        $process_class = "PostProcess_".$process;
+        $processes[$process] = new $process_class($dir);
+    } else {
+        echo "Error: missing process class: $process\n"; die;
     }
 }
 
@@ -51,26 +53,19 @@ while(true){
     if ($len>0) {
         $processitem = $redis->lpop("postprocessqueue");
         print $processitem."\n";
-        process($processitem);
+
+        $processitem = json_decode($processitem);
+        if ($processitem!=null) {
+            $process = $processitem->process;
+            if (isset($processes[$process])) {
+                $processes[$process]->process($processitem);
+            }
+        }
+
     } else {
         break;
     }
     sleep(1);
-}
-
-function process($processitem) {
-
-    $processitem = json_decode($processitem);
-    if ($processitem==null) return false;
-    
-    global $dir,$processes;
-    
-    $process = $processitem->process;
-    if (array_search($process,$processes)!==false) {
-              
-        $result = $process($dir,$processitem);
-
-    }
 }
 
 function updatetimevalue($id,$time,$value){
