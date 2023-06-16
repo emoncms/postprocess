@@ -136,8 +136,8 @@ function solardirectcalc($dir,$processitem)
     fclose($feedB_fh);
     
     if ($byteswritten>0) {
-        print "last time value: ".$time." ".$importval."\n";
-        updatetimevalue($output,$time,$importval);
+        print "last time value: ".$time." ".$directval."\n";
+        updatetimevalue($output,$time,$directval);
     }
     return true;
 }
