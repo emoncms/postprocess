@@ -5,6 +5,7 @@ class PostProcess_solardirectcalc extends PostProcess_common
     public function description() {
         return array(
             "name"=>"solardirectcalc",
+            "group"=>"Solar",
             "description"=>"Calculate direct use of solar",
             "settings"=>array(
                 "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),

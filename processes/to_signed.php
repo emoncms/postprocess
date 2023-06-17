@@ -5,6 +5,7 @@ class PostProcess_to_signed extends PostProcess_common
     public function description() {
         return array(
             "name"=>"to_signed",
+            "group"=>"Misc",
             "description"=>"Convert unsigned int to signed int",
             "settings"=>array(
                 "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to convert:"),

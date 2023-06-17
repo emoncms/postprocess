@@ -5,6 +5,7 @@ class PostProcess_exportcalc extends PostProcess_common
     public function description() {
         return array(
             "name"=>"exportcalc",
+            "group"=>"Solar",
             "description"=>"Export a calculation",
             "settings"=>array(
                 "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),

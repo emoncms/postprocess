@@ -17,6 +17,7 @@ class PostProcess_basic_formula extends PostProcess_common
 
         return array(
             "name"=>"basic_formula",
+            "group"=>"Formula",
             "description"=>"Basic formula",
             "settings"=>array(
                 "formula"=>array("type"=>"formula", "short"=>$bfdescription),

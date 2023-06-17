@@ -25,10 +25,10 @@ $("#process_select").change(function(){
    }
 
    var options = "";
-   for (var z in processes[process]) {
+   for (var z in processes[process].settings) {
 
-       options += "<b>"+processes[process][z]["short"]+"</b><br>";
-       if (processes[process][z]["type"]=="feed") {
+       options += "<b>"+processes[process].settings[z]["short"]+"</b><br>";
+       if (processes[process].settings[z]["type"]=="feed") {
             options += "<select class='process_option' option="+z+">";
             //for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
             
@@ -53,25 +53,25 @@ $("#process_select").change(function(){
             options += "</select><br>";
        }
 
-       if (processes[process][z]["type"]=="newfeed") {
+       if (processes[process].settings[z]["type"]=="newfeed") {
            var default_val = "";
-           if (processes[process][z]["default"]!=undefined) default_val = processes[process][z]["default"];
+           if (processes[process].settings[z]["default"]!=undefined) default_val = processes[process].settings[z]["default"];
            options += "<input class='process_option' option="+z+" type='text' value='"+default_val+"' /><br>";
        }
 
-       if (processes[process][z]["type"]=="value") {
+       if (processes[process].settings[z]["type"]=="value") {
            var default_val = "";
-           if (processes[process][z]["default"]!=undefined) default_val = processes[process][z]["default"];
+           if (processes[process].settings[z]["default"]!=undefined) default_val = processes[process].settings[z]["default"];
            options += "<input class='process_option' option="+z+" type='text' value='"+default_val+"' /><br>";
        }
 
-       if (processes[process][z]["type"]=="timezone") {
+       if (processes[process].settings[z]["type"]=="timezone") {
            var default_val = "";
-           if (processes[process][z]["default"]!=undefined) default_val = processes[process][z]["default"];
+           if (processes[process].settings[z]["default"]!=undefined) default_val = processes[process].settings[z]["default"];
            options += "<input class='process_option' option="+z+" type='text' value='"+default_val+"' /><br>";
        }
 
-       if (processes[process][z]["type"]=="formula") {
+       if (processes[process].settings[z]["type"]=="formula") {
            options += "<input class='process_option' option="+z+" type='text' /><br>";
        }
    }
@@ -87,8 +87,8 @@ function validate()
 {
     var valid = true;
     var process = $("#process_select").val();
-    for (var z in processes[process]) {
-        if (processes[process][z]["type"]=="newfeed") {
+    for (var z in processes[process].settings) {
+        if (processes[process].settings[z]["type"]=="newfeed") {
             var name = $(".process_option[option="+z+"]").val();
 
             var validfeed = true;
@@ -103,7 +103,7 @@ function validate()
             }
         }
 
-        if (processes[process][z]["type"]=="value") {
+        if (processes[process].settings[z]["type"]=="value") {
             var value = $(".process_option[option="+z+"]").val();
             if (value=="" || isNaN(value)) {
                 $(".process_option[option="+z+"]").css("background-color","#ffeeee");
@@ -113,7 +113,7 @@ function validate()
             }
         }
 
-        if (processes[process][z]["type"]=="formula") {
+        if (processes[process].settings[z]["type"]=="formula") {
             $(".process_option[option="+z+"]").css("width","400px");
             var formula = $(".process_option[option="+z+"]").val();
             var regex1 = /[^-\+\*\/\dfmax,\.\(\)]/;
@@ -138,7 +138,7 @@ $("#create").click(function(){
 
     if (!validate()) return false;
 
-    for (var z in processes[process]) {
+    for (var z in processes[process].settings) {
         params[z] = $(".process_option[option="+z+"]").val()
     }
 
@@ -194,10 +194,10 @@ function processlist_update()
             var fstart_time=[];
             var ftime=[];
             var finterval=[];
-            for (var key in processes[process]) {
+            for (var key in processes[process].settings) {
                 //if formula, should show it but in a wider div
                 //formula details are reduced to its expression
-                if (processes[process][key].type=="formula"){
+                if (processes[process].settings[key].type=="formula"){
                     out += "<div style='width:500px; float:left'><b>"+key+":</b>";
                     out += processlist[z][key].expression+"</div>";
                     //we should also extract the feeds from the formula
@@ -215,25 +215,25 @@ function processlist_update()
                 //feed details are id and name
                 } else {
                     out += "<div style='width:250px; float:left'><b>"+key+":</b>";
-                    if (processes[process][key].type=="feed" || processes[process][key].type=="newfeed")
+                    if (processes[process].settings[key].type=="feed" || processes[process].settings[key].type=="newfeed")
                         out += processlist[z][key].id+":"+processlist[z][key].name;
                     //if value, should print it
-                    if (processes[process][key].type=="value")
+                    if (processes[process].settings[key].type=="value")
                         out += processlist[z][key];
-                    if (processes[process][key].type=="timezone")
+                    if (processes[process].settings[key].type=="timezone")
                         out += processlist[z][key];
                     out += "</div>";
                 }
 
                 //rework by alexandre CUER
-                if (processes[process][key].type=="feed" || processes[process][key].type=="formula") {
+                if (processes[process].settings[key].type=="feed" || processes[process].settings[key].type=="formula") {
                     //base_npoints = processlist[z][key].npoints;
                     fstart_time.push(processlist[z][key].start_time);
                     ftime.push(processlist[z][key].time);
                     finterval.push(processlist[z][key].interval);
                 }
 
-                if (processes[process][key].type=="newfeed") {
+                if (processes[process].settings[key].type=="newfeed") {
                     out_npoints = processlist[z][key].npoints;
                 }
             }
@@ -260,25 +260,25 @@ $("#processlist").on("click",".runprocess",function(){
 
     var params = {};
 
-    for (var key in processes[process]) {
+    for (var key in processes[process].settings) {
 
-        if (processes[process][key].type=="feed") {
+        if (processes[process].settings[key].type=="feed") {
             params[key] = processlist[z][key].id;
         }
 
-        if (processes[process][key].type=="newfeed") {
+        if (processes[process].settings[key].type=="newfeed") {
             params[key] = processlist[z][key].id;
         }
 
-        if (processes[process][key].type=="value") {
+        if (processes[process].settings[key].type=="value") {
             params[key] = processlist[z][key];
         }
 
-        if (processes[process][key].type=="timezone") {
+        if (processes[process].settings[key].type=="timezone") {
             params[key] = processlist[z][key];
         }
 
-        if (processes[process][key].type=="formula") {
+        if (processes[process].settings[key].type=="formula") {
             params[key] = processlist[z][key].expression;
         }
     }

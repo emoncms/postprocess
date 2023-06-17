@@ -5,6 +5,7 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
     public function description() {
         return array(
             "name"=>"constantflow_tokwh",
+            "group"=>"Misc",
             "description"=>"Convert constant flow to kwh",
             "settings"=>array(
                 "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),

@@ -5,6 +5,7 @@ class PostProcess_offsetfeed extends PostProcess_common
     public function description() {
         return array(
             "name"=>"offsetfeed",
+            "group"=>"Calibration",
             "description"=>"Offset a feed by a constant value",
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to apply offset:"),

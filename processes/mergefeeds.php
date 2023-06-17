@@ -5,6 +5,7 @@ class PostProcess_mergefeeds extends PostProcess_common
     public function description() {
         return array(
             "name"=>"mergefeeds",
+            "group"=>"Feeds",
             "description"=>"Merge two feeds together",
             "settings"=>array(
                 "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed A:"),

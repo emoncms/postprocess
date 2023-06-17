@@ -5,6 +5,7 @@ class PostProcess_accumulator extends PostProcess_common
     public function description() {
         return array(
             "name"=>"accumulator",
+            "group"=>"Misc",
             "description"=>"Accumulate a feed",
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),

@@ -5,6 +5,7 @@ class PostProcess_importcalc extends PostProcess_common
     public function description() {
         return array(
             "name"=>"importcalc",
+            "group"=>"Solar",
             "description"=>"Calculate grid import from consumption and generation",
             "settings"=>array(
                 "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),

@@ -5,6 +5,7 @@ class PostProcess_trimfeedstart extends PostProcess_common
     public function description() {
         return array(
             "name"=>"trimfeedstart",
+            "group"=>"Feeds",
             "description"=>"Trim the start of a feed",
             "settings"=>array(
                 "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to trim:"),

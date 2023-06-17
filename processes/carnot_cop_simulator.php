@@ -7,6 +7,7 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
     public function description() {
         return array(
             "name"=>"carnot_cop_simulator",
+            "group"=>"Simulation",
             "description"=>"Simulates heat pump heat output and COP based on flow temperature, outside temperature and power consumption",
             "settings"=>array(
                 "heatpump_elec"=>array("type"=>"feed", "engine"=>5, "short"=>"Select heat pump electrical consumption feed:"),

@@ -5,6 +5,7 @@ class PostProcess_removeresets extends PostProcess_common
     public function description() {
         return array(
             "name"=>"removeresets",
+            "group"=>"Data cleanup",
             "description"=>"Remove resets from a feed",
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),

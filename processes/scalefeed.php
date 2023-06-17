@@ -5,6 +5,7 @@ class PostProcess_scalefeed extends PostProcess_common
     public function description() {
         return array(
             "name"=>"scalefeed",
+            "group"=>"Calibration",
             "description"=>"Scale a feed",
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),

@@ -5,6 +5,7 @@ class PostProcess_addfeeds extends PostProcess_common
     public function description() {
         return array(
             "name"=>"addfeeds",
+            "group"=>"Feeds",
             "description"=>"Add two feeds together",
             "settings"=>array(
                 "feedA"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed A:"),

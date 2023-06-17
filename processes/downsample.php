@@ -5,6 +5,7 @@ class PostProcess_downsample extends PostProcess_common
     public function description() {
         return array(
             "name"=>"downsample",
+            "group"=>"Feeds",
             "description"=>"Downsample a feed",
             "settings"=>array(
                 "feed"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to downsample:"),

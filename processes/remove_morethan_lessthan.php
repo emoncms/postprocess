@@ -5,6 +5,7 @@ class PostProcess_remove_morethan_lessthan extends PostProcess_common
     public function description() {
         return array(
             "name"=>"remove_morethan_lessthan",
+            "group"=>"Limits",
             "description"=>"Remove values more than or less than a certain value",
             "settings"=>array(
                 "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),

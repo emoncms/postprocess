@@ -5,6 +5,7 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
     public function description() {
         return array(
             "name"=>"liquidorairflow_tokwh",
+            "group"=>"Misc",
             "description"=>"Convert liquid or airflow to kwh",
             "settings"=>array(
                 "vhc"=>array("type"=>"value", "short"=>"volumetric heat capacity in Wh/m3/K"),

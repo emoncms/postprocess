@@ -83,7 +83,7 @@ class PostProcess
                     if (method_exists($process,"description")) {
                         $process_description = $process->description();
                         if (isset($process_description['settings'])) {
-                            $processes[$process_name] = $process_description['settings'];
+                            $processes[$process_name] = $process_description;
                         }
                     }
                 }

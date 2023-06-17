@@ -5,6 +5,7 @@ class PostProcess_allownegative extends PostProcess_common
     public function description() {
         return array(
             "name"=>"allownegative",
+            "group"=>"Limits",
             "description"=>"Allow only negative values",
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),

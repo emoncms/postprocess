@@ -30,6 +30,12 @@ function postprocess_controller()
         return array('content'=>$result);
     }
 
+    if ($route->action == "v2" && $session['write']) {
+        $result = view("Modules/postprocess/view_v2.php",array("processes"=>$processes));
+        $route->format = "html";
+        return array('content'=>$result);
+    }
+
     if ($route->action == "processes" && $session['write']) {
         $route->format = "json";
         return array('content'=>$processes);
@@ -55,7 +61,7 @@ function postprocess_controller()
 
             $process = $item->process;
             if (isset($processes[$process])) {
-                foreach ($processes[$process] as $key=>$option)
+                foreach ($processes[$process]['settings'] as $key=>$option)
                 {
                     if ($option['type']=="feed" || $option['type']=="newfeed") {
                         $id = $processlist[$i]->$key;
@@ -145,7 +151,7 @@ function postprocess_controller()
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
 
-        foreach ($processes[$process] as $key=>$option) {
+        foreach ($processes[$process]['settings'] as $key=>$option) {
            if (!isset($params->$key))
                return array('content'=>"missing option $key");
 
@@ -231,7 +237,7 @@ function postprocess_controller()
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
 
-        foreach ($processes[$process] as $key=>$option) {
+        foreach ($processes[$process]['settings'] as $key=>$option) {
            if (!isset($params->$key))
                return array('content'=>"missing option $key");
 
