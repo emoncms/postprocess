@@ -15,8 +15,9 @@ class PostProcess_removenan extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         $id = $processitem->feedid;
     
@@ -77,6 +78,6 @@ class PostProcess_removenan extends PostProcess_common
         
         echo "nanfix: ".$nanfix." datapoints, ".round(($nanfix/$npoints)*100)."%\n";
         echo "time: ".(microtime(true)-$stime)."\n";
-        return true;
+        return array("success"=>true);
     }
 }

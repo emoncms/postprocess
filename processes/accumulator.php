@@ -16,7 +16,8 @@ class PostProcess_accumulator extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
 
         $dir = $this->dir;
         $input = $processitem->input;
@@ -24,29 +25,20 @@ class PostProcess_accumulator extends PostProcess_common
 
         $im = getmeta($dir,$input);
         $om = getmeta($dir,$output);
-
-        /*
-        if ($im->interval != $om->interval) {
-            print "feed intervals do not match\n";
-            return false;
-        }*/
         
         if ($om->npoints >= $im->npoints) {
-            print "output feed already up to date\n";
-            return false;
+            return array("success"=>true, "message"=>"output feed already up to date");
         }
         
         // Copies over start_time to output meta file
         createmeta($dir,$output,$im);
 
         if (!$if = @fopen($dir.$input.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $input.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
         
         if (!$of = @fopen($dir.$output.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $output.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open output feed");
         }
         
         $buffer = "";
@@ -79,6 +71,6 @@ class PostProcess_accumulator extends PostProcess_common
         print "last time value: ".$time." ".$total."\n";
         updatetimevalue($output,$time,$total);
         
-        return true;
+        return array("success"=>true);
     }
 }

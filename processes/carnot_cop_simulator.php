@@ -30,7 +30,8 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
 
     public function process($p)
     {
-        if (!$this->validate($p)) return false;
+        $result = $this->validate($p);
+        if (!$result["success"]) return $result;
 
         $dir = $this->dir;
         $recalc = false;
@@ -64,8 +65,7 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
         if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time-$interval;
         
         if ($start_time==$end_time) {
-            print "Nothing to do, data already up to date\n";
-            return true;
+            return array("success"=>true,"message"=>"Nothing to do, data already up to date");
         }
             
         $power = 0;
@@ -132,6 +132,6 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
         $buffersize = $model->save_all();
         print "buffer size: ".($buffersize/1024)." kb\n";
         
-        return true;
+        return array("success"=>true);
     }
 }

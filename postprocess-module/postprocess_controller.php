@@ -151,6 +151,8 @@ function postprocess_controller()
         $process = $_GET['process'];
         $params = json_decode(file_get_contents('php://input'));
 
+        
+
         foreach ($processes[$process]['settings'] as $key=>$option) {
            if (!isset($params->$key))
                return array('content'=>"missing option $key");

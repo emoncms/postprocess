@@ -50,15 +50,15 @@
             <div v-if="param.type=='feed' || param.type=='newfeed'">
                 <b>{{param.short}}</b><br>
                 <div class="input-append input-prepend">
-                    <select v-model="new_process[key].id" @change="new_process_update">
+                    <select v-model="new_process[key].id" @change="new_process_update" style="width:150px">
                         <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
-                        <option value="create" v-if="param.type=='newfeed'">CREATE NEW FEED:</option>
+                        <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
                         <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
                             <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}</option>
                         </optgroup>
                     </select>
                     <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].tag" placeholder="Tag" style="width:100px"/>
-                    <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].name" placeholder="Name" style="width:100px" />
+                    <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].name" placeholder="Name" style="width:150px" />
                 </div>
             </div>
             <div v-if="param.type=='value'">
@@ -116,16 +116,16 @@
             new_process_selected: function() {
                 this.new_process = {};
                 for (var key in this.processes[this.new_process_select].settings) {
-                    if (this.processes[this.new_process_select].settings[key].type=='feed') {
+                    let setting = this.processes[this.new_process_select].settings[key];
+
+                    if (setting.type=='feed') {
                         this.new_process[key] = {id:"none"};
                     }
-                    if (this.processes[this.new_process_select].settings[key].type=='newfeed') {
-                        this.new_process[key] = {id:"create", tag:"", name:""};
+                    if (setting.type=='newfeed') {
+                        this.new_process[key] = {id:"create", tag: setting.default_tag, name: setting.default};
                     }
-                    if (this.processes[this.new_process_select].settings[key].type=='value') {
-                        var default_value = this.processes[this.new_process_select].settings[key].default;
-                        if (default_value==undefined) default_value = "";
-                        this.new_process[key] = default_value;
+                    if (setting.type=='value') {
+                        this.new_process[key] = setting.default;
                     }
                 }
                 this.validate_new_process();

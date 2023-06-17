@@ -19,7 +19,10 @@ if (!$output_feedid = $feed->get_id($userid,"solar_kwh")) {
 $feed->clear($output_feedid);
 
 $process = new PostProcess_powertokwh($settings["feed"]["phpfina"]["datadir"]);
-$process->process((object)array(
+$result = $process->process((object)array(
     "input"=>$feed->get_id($userid,"solar"),
     "output"=>$output_feedid
 ));
+if (!$result["success"]) {
+    print "Error: ".$result["message"]."\n";
+}

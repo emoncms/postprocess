@@ -16,8 +16,9 @@ class PostProcess_trimfeedstart extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         
         $feedid = $processitem->feedid;
@@ -63,6 +64,6 @@ class PostProcess_trimfeedstart extends PostProcess_common
         $meta->npoints = $length;
         createmeta($dir,$feedid,$meta);
         
-        return true;
+        return array("success"=>true);
     }
 }

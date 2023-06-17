@@ -58,7 +58,18 @@ while(true){
         if ($processitem!=null) {
             $process = $processitem->process;
             if (isset($processes[$process])) {
-                $processes[$process]->process($processitem);
+                $result = $processes[$process]->process($processitem);
+                if (isset($result['success'])) {
+                    if ($result['success']) {
+                        if (isset($result['message'])) {
+                            print "Success: ".$result['message']."\n";
+                        } else {
+                            print "Success\n";
+                        }
+                    } else {
+                        print "Error: ".$result['message']."\n";
+                    }
+                }
             }
         }
 

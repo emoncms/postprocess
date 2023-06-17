@@ -16,29 +16,23 @@ class PostProcess_allownegative extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         $input = $processitem->input;
         $output = $processitem->output;
 
         $input_meta = getmeta($dir,$input);
-        
         createmeta($dir,$output,$input_meta);
         $output_meta = getmeta($dir,$output);
-        // if ($om->npoints >= $im->npoints) {
-        //   print "output feed already up to date\n";
-        //   return false;
-        // }
 
         if (!$input_fh = @fopen($dir.$input.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $input.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
         
         if (!$output_fh = @fopen($dir.$output.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $output.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open output feed");
         }
         
         // get start position
@@ -75,6 +69,6 @@ class PostProcess_allownegative extends PostProcess_common
             print "last time value: ".$time." ".$value."\n";
             updatetimevalue($output,$time,$value);
         }
-        return true;
+        return array("success"=>true);
     }
 }

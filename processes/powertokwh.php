@@ -16,35 +16,25 @@ class PostProcess_powertokwh extends PostProcess_common
 
     public function process($p)
     {
-        if (!$this->validate($p)) return false;
-        
+        $result = $this->validate($p);
+        if (!$result["success"]) return $result;
+
         $im = getmeta($this->dir,$p->input);
-        print "input meta: ".json_encode($im)."\n";
-        
         $om = getmeta($this->dir,$p->output);
-        print "output meta: ".json_encode($om)."\n";
-        /*
-        if ($im->interval != $om->interval) {
-            print "feed intervals do not match\n";
-            return false;
-        }*/
         
         if ($om->npoints >= $im->npoints) {
-            print "output feed already up to date\n";
-            return false;
+            return array("success"=>true, "message"=>"output feed already up to date");
         }
         
         // Copies over start_time to output meta file
         createmeta($this->dir,$p->output,$im);
 
         if (!$if = @fopen($this->dir.$p->input.".dat", 'rb')) {
-            echo "ERROR: could not open $this->dir $p->input.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
         
         if (!$of = @fopen($this->dir.$p->output.".dat", 'c+')) {
-            echo "ERROR: could not open $this->dir $p->output.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open output feed");
         }
         
         $buffer = "";
@@ -98,6 +88,6 @@ class PostProcess_powertokwh extends PostProcess_common
         print "last time value: ".$time." ".$value."\n";
         updatetimevalue($p->output,$time,$value);
         
-        return true;
+        return array("success"=>true);
     }
 }

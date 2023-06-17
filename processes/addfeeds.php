@@ -17,8 +17,9 @@ class PostProcess_addfeeds extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-        
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+                
         $dir = $this->dir;
         $feedA = $processitem->feedA;
         $feedB = $processitem->feedB;
@@ -34,11 +35,9 @@ class PostProcess_addfeeds extends PostProcess_common
         print "FeedA start_time=$feedA_meta->start_time interval=$feedA_meta->interval\n";
         print "FeedB start_time=$feedB_meta->start_time interval=$feedB_meta->interval\n";
         
-        $feedA_interval_selected = false;
-        $feedB_interval_selected = false;
         if ($feedA_meta->interval==$feedB_meta->interval) $out_interval = $feedA_meta->interval;
-        if ($feedA_meta->interval>$feedB_meta->interval) { $out_interval = $feedA_meta->interval; $feedA_interval_selected = true; } 
-        if ($feedA_meta->interval<$feedB_meta->interval) { $out_interval = $feedB_meta->interval; $feedB_interval_selected = true; } 
+        if ($feedA_meta->interval>$feedB_meta->interval) $out_interval = $feedA_meta->interval;
+        if ($feedA_meta->interval<$feedB_meta->interval) $out_interval = $feedB_meta->interval;
         
         $out_start_time = 0;
         if ($feedA_meta->start_time==$feedB_meta->start_time) $out_start_time = (int) $feedA_meta->start_time;
@@ -58,18 +57,15 @@ class PostProcess_addfeeds extends PostProcess_common
         $output_meta = getmeta($dir,$output);
 
         if (!$feedA_fh = @fopen($dir.$feedA.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $feedA.dat\n";
-            return false;
+            return array("success"=>false,"error"=>"could not open $dir $feedA.dat");
         }
         
         if (!$feedB_fh = @fopen($dir.$feedB.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $feedB.dat\n";
-            return false;
+            return array("success"=>false,"error"=>"could not open $dir $feedB.dat");
         }
         
         if (!$output_fh = @fopen($dir.$output.".dat", 'ab')) {
-            echo "ERROR: could not open $dir $output.dat\n";
-            return false;
+            return array("success"=>false,"error"=>"could not open $dir $output.dat");
         }
         
         // Work out start and end time of merged feeds:
@@ -123,6 +119,6 @@ class PostProcess_addfeeds extends PostProcess_common
             print "last time value: ".$time." ".$outval."\n";
             updatetimevalue($output,$time,$outval);
         }
-        return true;
+        return array("success"=>true);
     }
 }

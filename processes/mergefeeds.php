@@ -17,8 +17,9 @@ class PostProcess_mergefeeds extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         $feedA = $processitem->feedA;
         $feedB = $processitem->feedB;
@@ -123,6 +124,6 @@ class PostProcess_mergefeeds extends PostProcess_common
             print "last time value: ".$time." ".$outval."\n";
             updatetimevalue($output,$time,$outval);
         }
-        return true;
+        return array("success"=>true);
     }
 }

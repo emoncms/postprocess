@@ -28,7 +28,8 @@ class PostProcess_basic_formula extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
 
         $dir = $this->dir;
         // regular expression to recognize a float or int value
@@ -63,8 +64,7 @@ class PostProcess_basic_formula extends PostProcess_common
         $out=$processitem->output;
         if(!$out_meta = getmeta($dir,$out)) return false;
         if (!$out_fh = @fopen($dir.$out.".dat", 'ab')) {
-            echo "ERROR: could not open $dir $out.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open $dir $out.dat");
         }
 
         //we catch the distinct feed numbers involved in the formula
@@ -120,8 +120,7 @@ class PostProcess_basic_formula extends PostProcess_common
             }
         }
         if ($recf==$original) print("formula is OK!!<br>"); else {
-          print("STOPPING could not understand your formula SORRY....<br>");
-          return false;
+          return array("success"=>false, "message"=>"could not understand your formula SORRY....");
         }
 
         $elements=[];
@@ -161,8 +160,7 @@ class PostProcess_basic_formula extends PostProcess_common
             if(!$meta = getmeta($dir,$id)) return false;
             $feeds_meta[$id]=$meta;
             if (!$fh = @fopen($dir.$id.".dat", 'rb')) {
-                echo "ERROR: could not open $dir $id.dat\n";
-                return false;
+                return array("success"=>false, "message"=>"could not open $dir $id.dat");
             }
             $feeds_dat[$id]=$fh;
         }
@@ -207,15 +205,13 @@ class PostProcess_basic_formula extends PostProcess_common
         }
 
         if(!$buffer) {
-            print("WARNING: nothing to write - all is up to date \n");
-            return false;
+            return array("success"=>false, "message"=>"nothing to write - all is up to date");
         }
 
         if(!$written_bytes=fwrite($out_fh,$buffer)){
-            print("ERROR: unable to write to the file with id=$out \n");
             foreach ($feeds_dat as $f) fclose($f);
             fclose($out_fh);
-            return false;
+            return array("success"=>false, "message"=>"unable to write to the file with id=$out");
         }
         $nbdataswritten=$written_bytes/4;
         print("NOTICE: basic_formula() wrote $written_bytes bytes ($nbdataswritten float values) \n");
@@ -225,6 +221,6 @@ class PostProcess_basic_formula extends PostProcess_common
         fclose($out_fh);
         print("last time value: $time / $sum \n");
         updatetimevalue($out,$time,$sum);
-        return true;
+        return array("success"=>true);
     }
 }

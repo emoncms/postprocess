@@ -19,8 +19,9 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
 
         $vhc = (float) $processitem->vhc;
@@ -34,18 +35,15 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
         if (!$out_meta = getmeta($dir,$out)) return false;
 
         if (!$tint_fh = @fopen($dir.$tint.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $tint.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
 
         if (!$text_fh = @fopen($dir.$text.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $text.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
 
         if (!$out_fh = @fopen($dir.$out.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $out.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open output feed");
         }
 
         $compute_meta=compute_meta($tint_meta,$text_meta);
@@ -103,16 +101,14 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
         }
 
         if(!$buffer) {
-            print("ERROR: nothing to write - all is up to date \n");
-            return false;
+            return array("success"=>false,"message"=>"nothing to write - all is up to date");
         }
 
         if(!$written_bytes=fwrite($out_fh,$buffer)){
-            print("ERROR: unable to write to the file with id=$out \n");
             fclose($tint_fh);
             fclose($text_fh);
             fclose($out_fh);
-            return false;
+            return array("success"=>false,"message"=>"unable to write to the file with id=$out");
         }
         $nbdataswritten=$written_bytes/4;
         print("NOTICE: constantflow_tokwh() wrote $written_bytes bytes ($nbdataswritten float values) \n");
@@ -123,6 +119,6 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
         fclose($out_fh);
         print("last time value: $time / $kwh \n");
         updatetimevalue($out,$time,$kwh);
-        return true;
+        return array("success"=>true);
     }
 }

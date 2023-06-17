@@ -17,8 +17,9 @@ class PostProcess_exportcalc extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         $feedA = $processitem->consumption;
         $feedB = $processitem->generation;
@@ -123,6 +124,6 @@ class PostProcess_exportcalc extends PostProcess_common
             print "last time value: ".$time." ".$exportval."\n";
             updatetimevalue($output,$time,$exportval);
         }
-        return true;
+        return array("success"=>true);
     }
 }

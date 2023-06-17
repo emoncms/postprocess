@@ -28,20 +28,19 @@ class PostProcess_common
         $settings = $this->description()["settings"];
         foreach ($settings as $key=>$setting) {
             if (!isset($processitem->{$key})) {
-                print "setting ".$key." not set\n";
-                return false;
+                return array("success" => false, "message" => "setting ".$key." not set\n");
             }
 
             if ($setting["type"] == "feed" || $setting["type"] == "newfeed") {
                 $feedid = (int) $processitem->{$key};
+                
                 if (!file_exists($this->dir.$feedid.".meta")) {
-                    print "setting: $key, feed: $feedid.meta does not exist\n";
-                    return false;
+                    return array("success" => false, "message" => "setting: $key, feed: $feedid.meta does not exist\n");
                 }
             }
         }
 
-        return true;
+        return array("success" => true);
     }
 }
 

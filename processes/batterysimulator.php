@@ -38,7 +38,8 @@ class PostProcess_batterysimulator extends PostProcess_common
 
     public function process($p)
     {
-        if (!$this->validate($p)) return false;
+        $result = $this->validate($p);
+        if (!$result["success"]) return $result;
 
         $dir = $this->dir;
         $recalc = false;
@@ -74,7 +75,7 @@ class PostProcess_batterysimulator extends PostProcess_common
         // Check that intervals are the same
         if ($model->meta['solar']->interval != $model->meta['consumption']->interval) {
             print "ERROR: interval of feeds do not match\n";
-            return false;
+            return array("success"=>false,"message"=>"interval of feeds do not match");
         }
 
         // Work out output data interval and start_time 
@@ -91,8 +92,7 @@ class PostProcess_batterysimulator extends PostProcess_common
         if ($start_time<$model->start_time) $start_time = $model->start_time;
         
         if ($start_time==$end_time) {
-            print "Nothing to do, data already up to date\n";
-            return true;
+            return array("success"=>true,"message"=>"Nothing to do, data already up to date");
         }
             
         $solar = 0;
@@ -220,6 +220,6 @@ class PostProcess_batterysimulator extends PostProcess_common
         $buffersize = $model->save_all();
         print "buffer size: ".($buffersize/1024)." kb\n";
         
-        return true;
+        return array("success"=>true);
     }
 }

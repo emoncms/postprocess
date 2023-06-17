@@ -24,8 +24,9 @@ class PostProcess_average extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         
         // Input and output feed ids
@@ -35,8 +36,6 @@ class PostProcess_average extends PostProcess_common
 
         // Load feed meta data
         $im = getmeta($dir,$input);
-        print "input meta: ".json_encode($im)."\n";
-        
         $om = getmeta($dir,$output);
 
         // Set output meta interval
@@ -49,28 +48,27 @@ class PostProcess_average extends PostProcess_common
         // Copies over start_time to output meta file
         createmeta($dir,$output,$om);
         
-        print "output meta: ".json_encode($om)."\n";
-        
         // Calculate the number of datapoints in the source feed that we will be averaging
         $dp_to_average = $om->interval / $im->interval;
         
         // Input feed must be a multiple of the input feed interval
         if (round($dp_to_average)!=$dp_to_average) {
-            echo "The output feed interval is not a multiple of the input feed interval\n";
-            return false;
+            return array("success"=>false, "message"=>"The output feed interval is not a multiple of the input feed interval");
         }
         // Must have at least 2 datapoints to average
         if ($dp_to_average<2) {
-            echo "Averaged feed must have at least 2 datapoints in the input feed to average\n";
-            return false;
+            return array("success"=>false, "message"=>"Averaged feed must have at least 2 datapoints in the input feed to average");
         }
         
         // Open input feed to read binary
         if (!$if = @fopen($dir.$input.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $input.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
-        
+        // Open output feed to write
+        if (!$of = @fopen($dir.$output.".dat", 'wb')) {
+            return array("success"=>false, "message"=>"could not open output feed");
+        }
+
         $buffer = "";
         
         $sum = 0;
@@ -109,11 +107,7 @@ class PostProcess_average extends PostProcess_common
         }
         fclose($if);
         
-        // Open output feed to write
-        if (!$of = @fopen($dir.$output.".dat", 'wb')) {
-            echo "ERROR: could not open $dir $output.dat\n";
-            return false;
-        }
+
         fwrite($of,$buffer);
         fclose($of);
         print "bytes written: ".strlen($buffer)."\n";
@@ -121,6 +115,6 @@ class PostProcess_average extends PostProcess_common
         print "last time value: ".$last_av_time." ".$average."\n";
         // updatetimevalue($output,$last_av_time,$average);
         
-        return true;
+        return array("success"=>true);
     }
 }

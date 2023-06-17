@@ -21,6 +21,9 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
     {
         $dir = $this->dir;
 
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+
         $vhc = (float) $processitem->vhc;
         $flow = $processitem->flow;
         $tint = $processitem->tint;
@@ -132,6 +135,6 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
         fclose($out_fh);
         print("last time value: $time / $kwh \n");
         updatetimevalue($out,$time,$kwh);
-        return true;
+        return array("success"=>true);
     }
 }

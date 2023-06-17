@@ -17,8 +17,9 @@ class PostProcess_downsample extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         $feed = $processitem->feed;
         $new_interval = $processitem->new_interval;
@@ -26,15 +27,13 @@ class PostProcess_downsample extends PostProcess_common
         
         $input_meta = getmeta($dir,$feed);
         
-        if ($input_meta->interval>=$new_interval) { 
-            print "feed interval must be less than new interval\n";
-            return false;
+        if ($input_meta->interval>=$new_interval) {
+            return array("success"=>false,"message"=>"feed interval must be less than new interval");
         }
         
         $allowed_intervals = array(10,15,20,30,60,120,180,300,600,900,1800,3600,7200,86400);
         if (!in_array($new_interval,$allowed_intervals)) {
-            print "invalid interval\n";
-            return false;
+            return array("success"=>false,"message"=>"invalid interval");
         }
         
         $output_meta = new stdClass();
@@ -45,8 +44,7 @@ class PostProcess_downsample extends PostProcess_common
         copy($dir.$feed.".dat",$dir.$backup.".dat");
         
         if (!$input_fh = @fopen($dir.$feed.".dat", 'rb')) {
-            echo "ERROR: could not open $dir $feed.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
         
         // get start position
@@ -96,8 +94,7 @@ class PostProcess_downsample extends PostProcess_common
         fclose($input_fh);
         
         if (!$output_fh = @fopen($dir.$feed.".dat", 'w')) {
-            echo "ERROR: could not open $dir $feed.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open output feed");
         }
         fwrite($output_fh,$buffer);
         fclose($output_fh);
@@ -115,6 +112,6 @@ class PostProcess_downsample extends PostProcess_common
                 updatetimevalue($feed,$time,$mean);
             }
         }
-        return true;
+        return array("success"=>true);
     }
 }

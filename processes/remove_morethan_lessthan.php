@@ -17,8 +17,9 @@ class PostProcess_remove_morethan_lessthan extends PostProcess_common
 
     public function process($processitem)
     {
-        if (!$this->validate($processitem)) return false;
-
+        $result = $this->validate($processitem);
+        if (!$result["success"]) return $result;
+        
         $dir = $this->dir;
         $id = $processitem->feedid;
         $morethan = $processitem->morethan;
@@ -77,6 +78,6 @@ class PostProcess_remove_morethan_lessthan extends PostProcess_common
         
         echo "nanfix: ".$fix_count." datapoints, ".round(($fix_count/$npoints)*100)."%\n";
         echo "time: ".(microtime(true)-$stime)."\n";
-        return true;
+        return array("success"=>true);
     }
 }
