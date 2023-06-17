@@ -70,7 +70,7 @@
 
     <br>
 
-    <button class="btn" v-if="new_process_create">Create</button>
+    <button class="btn" v-if="new_process_create" @click="create_process">Create</button>
 
 </div>
 
@@ -96,9 +96,9 @@
     // feeds by tag
     var feeds_by_tag = {};
     for (var z in feeds) {
-        var feed = feeds[z];
-        if (feeds_by_tag[feed.tag]==undefined) feeds_by_tag[feed.tag] = {};
-        feeds_by_tag[feed.tag][feed.id] = feed;
+        var f = feeds[z];
+        if (feeds_by_tag[f.tag]==undefined) feeds_by_tag[f.tag] = {};
+        feeds_by_tag[f.tag][f.id] = f;
     }
 
     var app = new Vue({
@@ -136,18 +136,83 @@
             },
             validate_new_process: function() {
                 var valid = true;
-                for (var key in this.new_process) {
-                    if (this.new_process[key].id=="none") valid = false;
-                    if (this.new_process[key].id=="create") valid = false;
+
+                for (var key in this.processes[this.new_process_select].settings) {
+                    let setting = this.processes[this.new_process_select].settings[key];
+
+                    if (setting.type=='feed') {
+                        if (this.new_process[key].id=="none") {
+                            valid = false;
+                        }
+                    }
+
+                    if (setting.type=='newfeed') {
+                        if (this.new_process[key].id=="create") {
+                            if (this.new_process[key].tag=="") valid = false;
+                            if (this.new_process[key].name=="") valid = false;
+                        }
+                    }
+
+                    if (setting.type=='value') {
+                        // check if numeric
+                        if (isNaN(this.new_process[key])) valid = false;
+                    }
                 }
+
+
                 app.new_process_create = valid;
+            },
+            create_process: function() {
+
+                var params = {};
+                for (var key in this.processes[this.new_process_select].settings) {
+                    let setting = this.processes[this.new_process_select].settings[key];
+                    
+                    if (setting.type=='feed') {
+                        params[key] = this.new_process[key].id;
+                    }
+
+                    if (setting.type=='newfeed') {
+                        var result = feed.create(this.new_process[key].tag, this.new_process[key].name, 5, {interval:3600}, '');
+                        if (result.success) {
+                            params[key] = result.feedid;
+                        } else {
+                            alert("Error creating feed: "+result.message);
+                            return false;
+                        }
+                    }
+
+                    if (setting.type=='value') {
+                        params[key] = this.new_process[key];
+                    }
+                }
+
+                $.ajax({
+                    type: "POST",
+                    url: path+"postprocess/create?process="+this.new_process_select,
+                    data: JSON.stringify(params),
+                    dataType: 'text',
+                    async: false,
+                    success: function(result) {
+                        console.log(result);
+                        
+                        load_process_list();
+
+                        app.new_process_select = 'none';
+                        app.new_process = {};
+                        app.new_process_create = false;
+                    }
+                });
             }
         }
     });
 
+    load_process_list();
     // Load process list using jquery
-    $.ajax({ url: path+"postprocess/list", dataType: "json", async: false, success: function(result) {
-        app.process_list = result;
-    }});
+    function load_process_list() {
+        $.ajax({ url: path+"postprocess/list", dataType: "json", async: false, success: function(result) {
+            app.process_list = result;
+        }});
+    }
 
 </script>
