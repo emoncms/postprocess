@@ -57,8 +57,8 @@
                             <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}</option>
                         </optgroup>
                     </select>
-                    <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].tag" placeholder="Tag" style="width:100px"/>
-                    <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].name" placeholder="Name" style="width:150px" />
+                    <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].tag" placeholder="Tag" style="width:100px" @change="new_process_update"/>
+                    <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].name" placeholder="Name" style="width:150px" @change="new_process_update" />
                 </div>
             </div>
             <div v-if="param.type=='value'">
@@ -117,11 +117,13 @@
                 this.new_process = {};
                 for (var key in this.processes[this.new_process_select].settings) {
                     let setting = this.processes[this.new_process_select].settings[key];
+                    if (setting.default==undefined) setting.default = "";
 
                     if (setting.type=='feed') {
                         this.new_process[key] = {id:"none"};
                     }
                     if (setting.type=='newfeed') {
+                        if (setting.default_tag==undefined) setting.default_tag = "";
                         this.new_process[key] = {id:"create", tag: setting.default_tag, name: setting.default};
                     }
                     if (setting.type=='value') {
@@ -148,8 +150,8 @@
 
                     if (setting.type=='newfeed') {
                         if (this.new_process[key].id=="create") {
-                            if (this.new_process[key].tag=="") valid = false;
                             if (this.new_process[key].name=="") valid = false;
+                            if (feed_exists(this.new_process[key].tag, this.new_process[key].name)) valid = false;
                         }
                     }
 
@@ -158,8 +160,6 @@
                         if (isNaN(this.new_process[key])) valid = false;
                     }
                 }
-
-
                 app.new_process_create = valid;
             },
             create_process: function() {
@@ -213,6 +213,13 @@
         $.ajax({ url: path+"postprocess/list", dataType: "json", async: false, success: function(result) {
             app.process_list = result;
         }});
+    }
+
+    function feed_exists(tag, name) {
+        for (var z in feeds) {
+            if (feeds[z].tag==tag && feeds[z].name==name) return true;
+        }
+        return false;
     }
 
 </script>
