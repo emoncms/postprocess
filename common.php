@@ -33,9 +33,21 @@ class PostProcess_common
 
             if ($setting["type"] == "feed" || $setting["type"] == "newfeed") {
                 $feedid = (int) $processitem->{$key};
-                
                 if (!file_exists($this->dir.$feedid.".meta")) {
                     return array("success" => false, "message" => "setting: $key, feed: $feedid.meta does not exist\n");
+                }
+            }
+
+            if ($setting['type']=="value") {
+                $value = (float) 1*$processitem->$key;
+                if ($value!=$processitem->$key) {
+                    return array("success"=>false,"message"=>"invalid value");
+                }
+            }
+
+            if ($setting['type']=="timezone") {
+                if (!$datetimezone = new DateTimeZone($processitem->{$key})) {
+                    return array("success"=>false,"message"=>"invalid timezone");
                 }
             }
         }
