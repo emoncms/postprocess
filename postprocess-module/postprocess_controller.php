@@ -140,24 +140,18 @@ function postprocess_controller()
     }
 
     // -------------------------------------------------------------------------
-    // CREATE NEW
+    // CREATE OR UPDATE PROCESS
     // -------------------------------------------------------------------------
-    if ($route->action == "create" && $session['write']) {
+    if (($route->action == "create" || $route->action == "update") && $session['write']) {
         $route->format = "text";
-
-        if (!isset($_GET['process']))
-            return array('content'=>"expecting parameter process");
-
-        $process = $_GET['process'];
+        $process = get('process',true);
         $params = json_decode(file_get_contents('php://input'));
-
-        
 
         foreach ($processes[$process]['settings'] as $key=>$option) {
            if (!isset($params->$key))
                return array('content'=>"missing option $key");
 
-           if ($option['type']=="feed") {
+            if ($option['type']=="feed" || $option['type']=="newfeed") {
                $feedid = (int) $params->$key;
                if ($feedid<1)
                    return array('content'=>"feed id must be numeric and more than 0");
@@ -170,24 +164,6 @@ function postprocess_controller()
                    return array('content'=>"incorrect feed engine");
 
                $params->$key = $feedid;
-           }
-
-           if ($option['type']=="newfeed") {
-               $newfeedname = preg_replace('/[^\w\s\-:]/','',$params->$key);
-               if ($params->$key=="")
-                   return array('content'=>"new feed name is blank");
-               if ($newfeedname!=$params->$key)
-                   return array('content'=>"new feed name contains invalid characters");
-                if ($feed->get_id($session['userid'],$newfeedname))
-                   return array('content'=>"feed already exists with name $newfeedname");
-
-                // New feed creation: note interval is 3600 this will be changed by the process to match input feeds..
-                $c = $feed->create($session['userid'],"",$newfeedname,Engine::PHPFINA,json_decode('{"interval":3600}'));
-                if (!$c['success'])
-                    return array('content'=>"feed could not be created");
-
-                // replace new feed name with its id if successfully created
-                $params->$key = $c['feedid'];
            }
 
            if ($option['type']=="value") {
@@ -202,99 +178,31 @@ function postprocess_controller()
            }
         }
 
-        // If we got this far the input parameters where valid.
-
+        // If we got this far the input parameters are valid.
         $userid = $session['userid'];
         $processlist = $postprocess->get($userid);
         if ($processlist==null) $processlist = array();
-
         $params->process = $process;
-        $processlist[] = $params;
 
-        $postprocess->set($userid,$processlist);
-        $redis->lpush("postprocessqueue",json_encode($params));
-
-         // -----------------------------------------------------------------
-        // Run postprocessor script using the emonpi service-runner
-        // -----------------------------------------------------------------
-        $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = $settings['log']['location']."/postprocess.log";
-        $redis->rpush("service-runner","$update_script>$update_logfile");
-        $result = "service-runner trigger sent";
-        // -----------------------------------------------------------------
-
-        $route->format = "json";
-        return array('content'=>$params);
-    }
-
-    // -------------------------------------------------------------------------
-    // UPDATE
-    // -------------------------------------------------------------------------
-    if ($route->action == "update" && $session['write']) {
-        $route->format = "text";
-
-        if (!isset($_GET['process']))
-            return array('content'=>"expecting parameter process");
-
-        $process = $_GET['process'];
-        $params = json_decode(file_get_contents('php://input'));
-
-        foreach ($processes[$process]['settings'] as $key=>$option) {
-           if (!isset($params->$key))
-               return array('content'=>"missing option $key");
-
-           if ($option['type']=="feed" || $option['type']=="newfeed") {
-               $feedid = (int) $params->$key;
-               if ($feedid<1)
-                   return array('content'=>"feed id must be numeric and more than 0");
-               if (!$feed->exist($feedid))
-                   return array('content'=>"feed does not exist");
-               $f = $feed->get($feedid);
-               if ($f['userid']!=$session['userid'])
-                   return array('content'=>"invalid feed");
-               if ($f['engine']!=$option['engine'])
-                   return array('content'=>"incorrect feed engine");
-               $params->$key = $feedid;
-           }
-
-           if ($option['type']=="value") {
-               $value = (float) $params->$key;
-               if ($value!=$params->$key)
-                   return array('content'=>"invalid value");
-           }
-           
-           if ($option['type']=="timezone") {
-               if (!$datetimezone = new DateTimeZone($params->$key))
-                   return array('content'=>"invalid timezone");
-           }
-        }
-
-        // If we got this far the input parameters where valid.
-
-        $userid = $session['userid'];
-        $processlist = $postprocess->get($userid);
-        
-        if ($processlist==null) $processlist = array();
-
-        $params->process = $process;
         // Check to see if the process has already been registered
-        $valid = false;
+        $process_exists = false;
         for ($i=0; $i<count($processlist); $i++) {
             $tmp = $processlist[$i];
-            //print "prm:".json_encode($params)."\n";
-            //print "tmp:".json_encode($tmp)."\n";
-            if (json_encode($tmp)==json_encode($params)) $valid = true;
+            if (json_encode($tmp)==json_encode($params)) {
+                $process_exists = true;
+                break;
+            }
         }
-        if (!$valid)
-            return array('content'=>"process does not exist, please create");
-
-        // Add process to queue
+        // If the process does not exist add it to the list
+        if (!$process_exists) {
+            $processlist[] = $params;
+            $postprocess->set($userid,$processlist);
+        }
         $redis->lpush("postprocessqueue",json_encode($params));
 
         // -----------------------------------------------------------------
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------
-
         $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
         $update_logfile = $settings['log']['location']."/postprocess.log";
         $redis->rpush("service-runner","$update_script>$update_logfile");

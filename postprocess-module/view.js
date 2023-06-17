@@ -142,6 +142,21 @@ $("#create").click(function(){
         params[z] = $(".process_option[option="+z+"]").val()
     }
 
+    // Create feeds
+    for (var z in processes[process].settings) {
+        var setting = processes[process].settings[z];
+        if (setting["type"]=="newfeed") {
+            var name = $(".process_option[option="+z+"]").val();
+            var result = feed.create("postprocess", name, 5, {interval:3600}, '');
+            if (result.success) {
+                params[z] = result.feedid;
+            } else {
+                alert("Error creating feed: "+result.message);
+                return false;
+            }
+        }
+    }
+
     clearInterval(processlist_updater);
 
     $.ajax({

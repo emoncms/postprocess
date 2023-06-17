@@ -37,7 +37,7 @@
 <div id="process_options"></div>
 <button id="create" class="btn" style="display:none">Create</button>
 
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=3"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=4"></script>
 <script>
 var logrunning = false;
 var refresher_log;
