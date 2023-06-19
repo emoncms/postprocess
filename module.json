@@ -1,6 +1,6 @@
 {
     "name"         : "Postprocess",
-    "version"      : "2.3.9",
+    "version"      : "2.4.0",
     "location"     : "/opt/emoncms/modules",
     "branches_available": ["stable","master"],
     "requires": []
