@@ -107,17 +107,20 @@ function postprocess_controller()
         $postprocess->set($session['userid'], $processlist);
         $redis->lpush("postprocessqueue", json_encode($params));
 
-        // -----------------------------------------------------------------
-        // Run postprocessor script using the emonpi service-runner
-        // -----------------------------------------------------------------
-        $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = $settings['log']['location'] . "/postprocess.log";
-        $redis->rpush("service-runner", "$update_script>$update_logfile");
-        $result = "service-runner trigger sent";
-        // -----------------------------------------------------------------
+        // Check if post_processor is being ran by cron
+        if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
+            if ($settings['postprocess']['cron_enabled']) {
+                return array('success' => true, 'message' => "Process added to queue");
+            }
+        }
 
         // Check if service-runner.service is running
         if ($postprocess->check_service_runner()) {
+            // Ask service-runner to run postprocess script
+            $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
+            $update_logfile = $settings['log']['location'] . "/postprocess.log";
+            $redis->rpush("service-runner", "$update_script>$update_logfile");
+
             return array('success' => true, 'message' => "Process added to queue");
         } else {
             return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
@@ -134,16 +137,21 @@ function postprocess_controller()
             return array('success' => false, 'message' => "process does not exist");
         }
         $redis->lpush("postprocessqueue", json_encode($processlist[$processid]));
-        // -----------------------------------------------------------------
-        // Run postprocessor script using the emonpi service-runner
-        // -----------------------------------------------------------------
-        $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = $settings['log']['location'] . "/postprocess.log";
-        $redis->rpush("service-runner", "$update_script>$update_logfile");
-        $result = "service-runner trigger sent";
-        // -----------------------------------------------------------------
+
+        // Check if post_processor is being ran by cron
+        if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
+            if ($settings['postprocess']['cron_enabled']) {
+                return array('success' => true, 'message' => "Process added to queue");
+            }
+        }
+
         // Check if service-runner.service is running
         if ($postprocess->check_service_runner()) {
+            // Ask service-runner to run postprocess script
+            $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
+            $update_logfile = $settings['log']['location'] . "/postprocess.log";
+            $redis->rpush("service-runner", "$update_script>$update_logfile");
+
             return array('success' => true, 'message' => "Process added to queue");
         } else {
             return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
