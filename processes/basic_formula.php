@@ -177,7 +177,12 @@ class PostProcess_basic_formula extends PostProcess_common
         }
         print("NOTICE : ouput is now : ($out_meta->npoints,$out_meta->interval,$out_meta->start_time) \n");
 
-        $writing_start_time=$out_meta->start_time+($out_meta->interval*$out_meta->npoints);
+        if ($processitem->process_mode=='recent') {
+          $writing_start_time=$out_meta->start_time+($out_meta->interval*$out_meta->npoints);
+        } else {
+          $writing_start_time=$out_meta->start_time;
+        }
+        
         $writing_end_time=$compute_meta->writing_end_time;
         $interval=$out_meta->interval;
 

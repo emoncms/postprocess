@@ -22,10 +22,10 @@
             <td>
                 <span v-for="(param,key) in processes[item.process].settings">
                     <span v-if="param.type=='feed'">
-                        <b>{{key}}:</b>{{item[key].id}}:{{item[key].name}}<br>
+                        <b>{{key}}:</b>{{item[key]}}:{{feeds_by_id[item[key]].name}}<br>
                     </span>
                     <span v-if="param.type=='newfeed'">
-                        <b>{{key}}:</b>{{item[key].id}}:{{item[key].name}}<br>
+                        <b>{{key}}:</b>{{item[key]}}:{{feeds_by_id[item[key]].name}}<br>
                     </span>
                     <span v-if="param.type=='value'">
                         <b>{{key}}:</b>{{item[key]}}<br>
@@ -34,7 +34,7 @@
                         <b>{{key}}:</b>{{item[key]}}<br>
                     </span>
                     <span v-if="param.type=='formula'">
-                        <b>{{key}}:</b>{{item[key].expression}}<br>
+                        <b>{{key}}:</b>{{item[key]}}<br>
                     </span>
                 </span>
                 
@@ -72,15 +72,15 @@
                 <div v-if="param.type=='feed' || param.type=='newfeed'">
                     <b>{{param.short}}</b><br>
                     <div class="input-append input-prepend">
-                        <select v-model="new_process[key].id" @change="new_process_update" style="width:150px">
+                        <select v-model="new_process[key]" @change="new_process_update" style="width:150px">
                             <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
                             <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
                                 <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}</option>
                             </optgroup>
                         </select>
-                        <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].tag" placeholder="Tag" style="width:100px" @change="new_process_update"/>
-                        <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].name" placeholder="Name" style="width:150px" @change="new_process_update" />
+                        <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].tag" placeholder="Tag" style="width:100px" @change="new_process_update"/>
+                        <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].name" placeholder="Name" style="width:150px" @change="new_process_update" />
                     </div>
                 </div>
                 <div v-if="param.type=='value' || param.type=='timezone'">
@@ -102,7 +102,7 @@
                     </div>
                     <div class="input-prepend">
                         <span class="add-on">Expression</span>
-                        <input type="text" v-model="new_process[key].expression" @change="new_process_update">
+                        <input type="text" v-model="new_process[key]" @change="new_process_update">
                     </div>
                 </div>
                 <div v-if="param.type=='select'">

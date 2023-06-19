@@ -39,97 +39,31 @@ function postprocess_controller()
     // PROCESS LIST
     // -------------------------------------------------------------------------
     if ($route->action == "list" && $session['write']) {
-
-        $userid = $session['userid'];
-
-        $processlist = $postprocess->get($userid);
-
-        if ($processlist == null) $processlist = array();
+        $route->format = "json";
+        if (!$processlist = $postprocess->get($session['userid'])) {
+            $processlist = array();
+        }
         $processlist_long = array();
         $processlist_valid = array();
-
+        // validate each process in the list
         for ($i = 0; $i < count($processlist); $i++) {
+            $params = json_decode(json_encode($processlist[$i]));
+            // Check if process exists
             $valid = true;
-
-            $item = json_decode(json_encode($processlist[$i]));
-
-            $process = $item->process;
-            if (isset($processes[$process])) {
-                foreach ($processes[$process]['settings'] as $key => $option) {
-                    if ($option['type'] == "feed" || $option['type'] == "newfeed") {
-                        $id = $processlist[$i]->$key;
-                        if ($feed->exist((int)$id)) {
-                            $f = $feed->get($id);
-                            if ($f['userid'] != $session['userid']) return false;
-                            if ($meta = $feed->get_meta($id)) {
-                                $f['start_time'] = $meta->start_time;
-                                $f['interval'] = $meta->interval;
-                                $f['npoints'] = $meta->npoints;
-                                $f['id'] = (int) $f['id'];
-                                $timevalue = $feed->get_timevalue($id);
-                                $f['time'] = $timevalue["time"];
-                            } else {
-                                // $valid = false;
-                                // $log->error("Invalid meta: ".json_encode($meta));
-                            }
-                            $item->$key = $f;
-                        } else {
-                            $valid = false;
-                            $log->error("Feed $id does not exist");
-                        }
-                    }
-
-                    if ($option['type'] == "formula") {
-                        $formula = $processlist[$i]->$key;
-                        $f = array();
-                        $f['expression'] = $formula;
-                        //we catch feed numbers in the formula
-                        $feed_ids = array();
-                        while (preg_match("/(f\d+)/", $formula, $b)) {
-                            $feed_ids[] = substr($b[0], 1, strlen($b[0]) - 1);
-                            $formula = str_replace($b[0], "", $formula);
-                        }
-                        $all_intervals = array();
-                        $all_start_times = array();
-                        $all_ending_times = array();
-                        //we check feeds existence and stores all usefull metas
-                        foreach ($feed_ids as $id) {
-                            if ($feed->exist((int)$id)) {
-                                $m = $feed->get_meta($id);
-                                $all_intervals[] = $m->interval;
-                                $all_start_times[] = $m->start_time;
-                                $timevalue = $feed->get_timevalue($id);
-                                $all_ending_times[] = $timevalue["time"];
-                            } else {
-                                $valid = false;
-                                $log->error("Feed $id does not exist");
-                            }
-                        }
-                        if ($valid) {
-                            $f['interval'] = max($all_intervals);
-                            $f['start_time'] = max($all_start_times);
-                            $f['time'] = min($all_ending_times);
-
-                            $item->$key = $f;
-                        }
-                    }
-                }
-            } else {
+            if (!isset($processes[$params->process])) {
                 $valid = false;
-                $log->error("$process does not exist");
             }
-
+            // Check if process parameters are valid
+            $result = $postprocess->validate_params($session['userid'],$params->process,$params);
+            if (!$result['success']) $valid = false;
+            // If valid add to output
             if ($valid) {
-                $processlist_long[] = $item;
+                $processlist_long[] = $processlist[$i];
                 $processlist_valid[] = $processlist[$i];
             }
         }
-
-        $postprocess->set($userid, $processlist_valid);
-
+        $postprocess->set($session['userid'], $processlist_valid);
         $result = $processlist_long;
-
-        $route->format = "json";
     }
 
     // -------------------------------------------------------------------------
