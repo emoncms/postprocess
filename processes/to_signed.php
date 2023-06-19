@@ -22,13 +22,10 @@ class PostProcess_to_signed extends PostProcess_common
         $id = $processitem->feedid;
     
         if (!$fh = @fopen($dir.$id.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $id.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open feed");
         }
-        $npoints = floor(filesize($dir.$id.".dat") / 4.0);
-        if ($npoints==0) {
-            echo "ERROR: npoints is zero\n";
-            return false;
+        if (!$npoints = floor(filesize($dir.$id.".dat") / 4.0)) {
+            return array("success"=>false, "message"=>"feed is empty");
         }
         $fpos = 0;
         $dplefttoread = $npoints;
@@ -57,7 +54,6 @@ class PostProcess_to_signed extends PostProcess_common
                         fwrite($fh,pack("f",$fixed_value));
                     }
                 }
-                // if ((int)$dpos%((int)($npoints/10))==0) echo ".";
             }
             $dplefttoread -= $count;
             $fpos += $count;
