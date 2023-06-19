@@ -37,6 +37,7 @@ class PostProcess_solardirectcalc extends PostProcess_common
         $out_meta->start_time = $start_time;
         $out_meta->interval = $interval;
         createmeta($this->dir,$params->out,$out_meta);
+        $out_meta = getmeta($this->dir,$params->out);
 
         // Find end time of input feeds
         $use_end_time = $use_meta->start_time + ($use_meta->interval * $use_meta->npoints);
@@ -55,6 +56,10 @@ class PostProcess_solardirectcalc extends PostProcess_common
         // End time of this process
         $end_time = $use_end_time;
         if ($gen_end_time<$end_time) $end_time = $gen_end_time;
+
+        if ($start_time>=$end_time) {
+            return array("success"=>false, "message"=>"no new data to process");
+        }
         
         // Open input and output feeds
         if (!$use_fh = @fopen($this->dir.$params->use.".dat", 'rb')) {
