@@ -36,6 +36,14 @@ class PostProcess_common
                 if (!file_exists($this->dir.$feedid.".meta")) {
                     return array("success" => false, "message" => "setting: $key, feed: $feedid.meta does not exist\n");
                 }
+                // check if feed is readable
+                if (!is_readable($this->dir.$feedid.".meta")) {
+                    return array("success" => false, "message" => "setting: $key, feed: $feedid.meta is not readable\n");
+                }
+                // check if feed is writable
+                if ($setting["type"] == "newfeed" && !is_writable($this->dir.$feedid.".meta")) {
+                    return array("success" => false, "message" => "setting: $key, feed: $feedid.meta is not writable\n");
+                }
             }
 
             if ($setting['type']=="value") {
@@ -49,6 +57,10 @@ class PostProcess_common
                 if (!$datetimezone = new DateTimeZone($processitem->{$key})) {
                     return array("success"=>false,"message"=>"invalid timezone");
                 }
+            }
+
+            if ($setting['type']=="formula") {
+                
             }
         }
 

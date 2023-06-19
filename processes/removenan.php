@@ -67,7 +67,7 @@ class PostProcess_removenan extends PostProcess_common
                     $in_nan_period = 0;
                 }
                 
-                if ($dpos%($npoints/10)==0) echo ".";
+                // if ($dpos%($npoints/10)==0) echo ".";
             }
             $dplefttoread -= $count;
             $fpos += $count;

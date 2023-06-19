@@ -1,325 +1,226 @@
-var processlist_updater = false;
+// sort by group
+var processes_by_group = {};
+for (var key in processes) {
+    var group = processes[key].group;
+    if (processes_by_group[group]==undefined) processes_by_group[group] = {};
+    processes_by_group[group][key] = processes[key];
+}
 
 var feeds = feed.list();
-
-//--------------------------------------------------------------------------------------------
-// Create/register new process
-//--------------------------------------------------------------------------------------------
-
-var processes = {};
-$.ajax({ url: path+"postprocess/processes", dataType: 'json', async: false, success: function(result) {processes = result;} });
-
-var process_select = "<option value=''>Select process:</option>";
-for (var z in processes) {
-    process_select += "<option value="+z+">"+z+"</option>";
-}
-$("#process_select").html(process_select);
-
-$("#process_select").change(function(){
-   var process = $(this).val();
-
-   if (process=="") {
-       $("#process_options").html("");
-       $("#create").hide();
-       return false;
-   }
-
-   var options = "";
-   for (var z in processes[process].settings) {
-
-       options += "<b>"+processes[process].settings[z]["short"]+"</b><br>";
-       if (processes[process].settings[z]["type"]=="feed") {
-            options += "<select class='process_option' option="+z+">";
-            //for (var n in feeds) options += "<option value="+feeds[n].id+">"+feeds[n].name+"</option>";
-            
-            var feedgroups = [];
-            for (n in feeds) {
-                if (parseInt(feeds[n].engine) == 7) continue; // Dont list virtual feed
-                var group = (feeds[n].tag === null ? "NoGroup" : feeds[n].tag);
-                if (group!="Deleted") {
-                    if (!feedgroups[group]) feedgroups[group] = []
-                    feedgroups[group].push(feeds[n]);
-                }
-            }
-            var out = "<option value=-1>CHOOSE FEED:</option>";
-            for (n in feedgroups) {
-                out += "<optgroup label='"+n+"'>";
-                for (p in feedgroups[n]) {
-                     out += "<option value="+feedgroups[n][p]['id']+">"+feedgroups[n][p].name+"</option>";
-                }
-            out += "</optgroup>";
-            }
-            options+=out;
-            options += "</select><br>";
-       }
-
-       if (processes[process].settings[z]["type"]=="newfeed") {
-           var default_val = "";
-           if (processes[process].settings[z]["default"]!=undefined) default_val = processes[process].settings[z]["default"];
-           options += "<input class='process_option' option="+z+" type='text' value='"+default_val+"' /><br>";
-       }
-
-       if (processes[process].settings[z]["type"]=="value") {
-           var default_val = "";
-           if (processes[process].settings[z]["default"]!=undefined) default_val = processes[process].settings[z]["default"];
-           options += "<input class='process_option' option="+z+" type='text' value='"+default_val+"' /><br>";
-       }
-
-       if (processes[process].settings[z]["type"]=="timezone") {
-           var default_val = "";
-           if (processes[process].settings[z]["default"]!=undefined) default_val = processes[process].settings[z]["default"];
-           options += "<input class='process_option' option="+z+" type='text' value='"+default_val+"' /><br>";
-       }
-
-       if (processes[process].settings[z]["type"]=="formula") {
-           options += "<input class='process_option' option="+z+" type='text' /><br>";
-       }
-   }
-   $("#process_options").html(options);
-   validate();
-});
-
-$("#process_options").on("change",".process_option",function(){
-    validate();
-});
-
-function validate()
-{
-    var valid = true;
-    var process = $("#process_select").val();
-    for (var z in processes[process].settings) {
-        if (processes[process].settings[z]["type"]=="newfeed") {
-            var name = $(".process_option[option="+z+"]").val();
-
-            var validfeed = true;
-            for (var n in feeds) if (feeds[n].name==name) validfeed = false;
-            if (name=="") validfeed = false;
-
-            if (validfeed) {
-                $(".process_option[option="+z+"]").css("background-color","#eeffee");
-            } else {
-                $(".process_option[option="+z+"]").css("background-color","#ffeeee");
-                valid = false;
-            }
-        }
-
-        if (processes[process].settings[z]["type"]=="value") {
-            var value = $(".process_option[option="+z+"]").val();
-            if (value=="" || isNaN(value)) {
-                $(".process_option[option="+z+"]").css("background-color","#ffeeee");
-                valid = false;
-            } else {
-                $(".process_option[option="+z+"]").css("background-color","#eeffee");
-            }
-        }
-
-        if (processes[process].settings[z]["type"]=="formula") {
-            $(".process_option[option="+z+"]").css("width","400px");
-            var formula = $(".process_option[option="+z+"]").val();
-            var regex1 = /[^-\+\*\/\dfmax,\.\(\)]/;
-            var regex2 = /f/;
-            if (formula.match(regex1) || !formula.match(regex2) ){
-                $(".process_option[option="+z+"]").css("background-color","#ffeeee");
-                valid = false;
-            } else {
-                $(".process_option[option="+z+"]").css("background-color","#eeffee");
-            }
-        }
-    }
-
-    if (valid) $("#create").show(); else $("#create").hide();
-
-    return valid;
+// feeds by tag
+var feeds_by_tag = {};
+for (var z in feeds) {
+    var f = feeds[z];
+    if (feeds_by_tag[f.tag]==undefined) feeds_by_tag[f.tag] = {};
+    feeds_by_tag[f.tag][f.id] = f;
 }
 
-$("#create").click(function(){
-    var process = $("#process_select").val();
-    var params = {};
+var app = new Vue({
+    el: '#app',
+    data: {
+        feeds_by_tag: feeds_by_tag,
+        processes: processes,
+        processes_by_group: processes_by_group,
+        process_list: [],
+        new_process_select: 'none',
+        new_process: {},
+        new_process_mode: 'recent',
+        new_process_start: 0,
+        new_process_create: false,
+        mode: 'create',
+        selected_process: -1,
+        formula_feed_finder_id: 'none'
+    },
+    methods: {
+        new_process_selected: function() {
+            this.new_process = {};
+            for (var key in this.processes[this.new_process_select].settings) {
+                let setting = this.processes[this.new_process_select].settings[key];
+                if (setting.default==undefined) setting.default = "";
 
-    if (!validate()) return false;
-
-    for (var z in processes[process].settings) {
-        params[z] = $(".process_option[option="+z+"]").val()
-    }
-
-    // Create feeds
-    for (var z in processes[process].settings) {
-        var setting = processes[process].settings[z];
-        if (setting["type"]=="newfeed") {
-            var name = $(".process_option[option="+z+"]").val();
-            var result = feed.create("postprocess", name, 5, {interval:3600}, '');
-            if (result.success) {
-                params[z] = result.feedid;
-            } else {
-                alert("Error creating feed: "+result.message);
-                return false;
+                if (setting.type=='feed') {
+                    this.new_process[key] = {id:"none"};
+                }
+                if (setting.type=='newfeed') {
+                    if (setting.default_tag==undefined) setting.default_tag = "";
+                    this.new_process[key] = {id:"create", tag: setting.default_tag, name: setting.default};
+                }
+                if (setting.type=='value') {
+                    this.new_process[key] = setting.default;
+                }
+                if (setting.type=='timezone') {
+                    this.new_process[key] = setting.default;
+                }
+                if (setting.type=='formula') {
+                    this.new_process[key] = {expression: ''};
+                }
             }
-        }
-    }
+            this.validate_new_process();
+        },
+        new_process_update: function() {
+            this.new_process_create = true;
+            this.validate_new_process();
+        },
+        validate_new_process: function() {
+            var valid = true;
 
-    clearInterval(processlist_updater);
+            for (var key in this.processes[this.new_process_select].settings) {
+                let setting = this.processes[this.new_process_select].settings[key];
 
-    $.ajax({
-        type: "POST",
-        url: path+"postprocess/create?process="+process,
-        data: JSON.stringify(params),
-        dataType: 'text',
-        async: false,
-        success: function(result) {
-            console.log(result);
-        }
-    });
-
-    $("#create").hide();
-
-    setTimeout(function() {
-        processlist_update();
-        processlist_updater = setInterval(processlist_update,5000);
-    },500);
-});
-
-
-//--------------------------------------------------------------------------------------------
-// Process list
-//--------------------------------------------------------------------------------------------
-
-var processlist = [];
-processlist_update();
-processlist_updater = setInterval(processlist_update,5000);
-
-function processlist_update()
-{
-    processlist = [];
-    $.ajax({ url: path+"postprocess/list", dataType: 'json', async: true, success: function(data)
-    {
-        processlist = data;
-
-        var out = "";
-        for (z in processlist) {
-
-            var process = processlist[z].process;
-
-            out += "<tr>";
-            out += "<td>"+process+"</td>";
-
-            out += "<td>";
-            var base_npoints = 0;
-            var out_npoints = 0;
-
-            var fstart_time=[];
-            var ftime=[];
-            var finterval=[];
-            for (var key in processes[process].settings) {
-                //if formula, should show it but in a wider div
-                //formula details are reduced to its expression
-                if (processes[process].settings[key].type=="formula"){
-                    out += "<div style='width:500px; float:left'><b>"+key+":</b>";
-                    out += processlist[z][key].expression+"</div>";
-                    //we should also extract the feeds from the formula
-                    var myformula=processlist[z][key].expression;
-                    var formula_feeds=[];
-                    var delimiter=/f/;
-                    while (delimiter.test(myformula)){
-                        var regex = /(f\d+)/;
-                        var found = myformula.match(regex);
-                        var found_regex = new RegExp(found[0],'g');
-                        myformula=myformula.replace(found_regex,"");
-                        formula_feeds.push(found[0].substr(1,found[0].length-1));
+                if (setting.type=='feed') {
+                    if (this.new_process[key].id=="none") {
+                        valid = false;
                     }
-                    //console.log("found:"+formula_feeds+"and formula is :"+myformula);
-                //feed details are id and name
-                } else {
-                    out += "<div style='width:250px; float:left'><b>"+key+":</b>";
-                    if (processes[process].settings[key].type=="feed" || processes[process].settings[key].type=="newfeed")
-                        out += processlist[z][key].id+":"+processlist[z][key].name;
-                    //if value, should print it
-                    if (processes[process].settings[key].type=="value")
-                        out += processlist[z][key];
-                    if (processes[process].settings[key].type=="timezone")
-                        out += processlist[z][key];
-                    out += "</div>";
                 }
 
-                //rework by alexandre CUER
-                if (processes[process].settings[key].type=="feed" || processes[process].settings[key].type=="formula") {
-                    //base_npoints = processlist[z][key].npoints;
-                    fstart_time.push(processlist[z][key].start_time);
-                    ftime.push(processlist[z][key].time);
-                    finterval.push(processlist[z][key].interval);
+                if (setting.type=='newfeed') {
+                    if (this.new_process[key].id=="create") {
+                        if (this.new_process[key].name=="") valid = false;
+                        if (feed_exists(this.new_process[key].tag, this.new_process[key].name)) valid = false;
+                    }
                 }
 
-                if (processes[process].settings[key].type=="newfeed") {
-                    out_npoints = processlist[z][key].npoints;
+                if (setting.type=='value') {
+                    // check if numeric
+                    if (this.new_process[key]=="" || isNaN(this.new_process[key])) valid = false;
+                }
+
+                if (setting.type=='timezone') {
+                    // check if timezone
+                    if (this.new_process[key]=="" || !moment.tz.zone(this.new_process[key])) valid = false;
+                }
+
+                if (setting.type=='formula') {
+                    var formula = this.new_process[key].expression;
+                    var regex1 = /[^-\+\*\/\dfmax,\.\(\)]/;
+                    var regex2 = /f/;
+                    if (formula.match(regex1) || !formula.match(regex2) ){
+                        valid = false;
+                    }
                 }
             }
-            //console.log(fstart_time);
-            base_npoints=Math.round((Math.min(...ftime)-Math.max(...fstart_time))/Math.max(...finterval));
-            out += "</td>";
+            app.new_process_create = valid;
+        },
+        create_process: function() {
 
-            var points_behind = base_npoints - out_npoints;
-            out += "<td>"+points_behind+" points behind</td>";
-            out += "<td><button class='btn runprocess btn-success' processid="+z+" >Run process</button></td>";
-            out += "<td><button class='btn remove-process btn-danger' processid="+z+" ><i class='icon-trash'></i> Remove</button></td>";
-            out += "</tr>";
+            var params = {};
+            for (var key in this.processes[this.new_process_select].settings) {
+                let setting = this.processes[this.new_process_select].settings[key];
+                
+                if (setting.type=='feed') {
+                    params[key] = this.new_process[key].id;
+                }
+
+                if (setting.type=='newfeed') {
+                    if (this.new_process[key].id=="create") {
+                        var result = feed.create(this.new_process[key].tag, this.new_process[key].name, 5, {interval:3600}, '');
+                        if (result.success) {
+                            params[key] = result.feedid;
+                        } else {
+                            alert("Error creating feed: "+result.message);
+                            return false;
+                        }
+                    } else {
+                        params[key] = this.new_process[key].id;
+                    } 
+                }
+
+                if (setting.type=='value') {
+                    params[key] = this.new_process[key];
+                }
+
+                if (setting.type=='timezone') {
+                    params[key] = this.new_process[key];
+                }
+
+                if (setting.type=='formula') {
+                    params[key] = this.new_process[key].expression;
+                }
+            }
+
+            // These are added to all processes and control
+            // how much of the input data is processed
+            params['process_mode'] = this.new_process_mode;
+            params['process_start'] = this.new_process_from;
+
+            var url = path+"postprocess/create?process="+this.new_process_select;
+            if (this.mode=='edit') {
+                url = path+"postprocess/edit?process="+this.new_process_select+"&processid="+this.selected_process;
+            }
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: JSON.stringify(params),
+                dataType: 'text',
+                async: false,
+                success: function(result) {
+                    load_process_list();
+
+                    app.new_process_select = 'none';
+                    app.new_process = {};
+                    app.new_process_create = false;
+                    app.mode = 'create';
+                }
+            });
+        },
+        delete_process: function(index) {
+            if (confirm("Are you sure you want to delete this process?")) {
+                $.ajax({
+                    url: path+"postprocess/remove?processid="+index,
+                    dataType: 'json',
+                    async: false,
+                    success: function(result) {
+                        if (result.success) {
+                            app.process_list.splice(index, 1);
+                        } else {
+                            alert("Error deleting process: "+result.message);
+                        }
+                    }
+                });
+            }
+        },
+        edit_process: function(index) {
+            // load process to new process form
+            app.new_process_select = app.process_list[index].process;
+            app.new_process = app.process_list[index];
+            app.new_process_create = true;
+            app.mode = 'edit';
+            app.selected_process = index;
+        },
+        run_process: function(index) {
+            $.ajax({
+                url: path+"postprocess/run?processid="+index,
+                dataType: 'json',
+                async: true,
+                success: function(result) {
+                    if (result.success) {
+                        alert("Success: "+result.message);
+                    } else {
+                        alert("Error starting process: "+result.message);
+                    }
+                }
+            });
+        },
+        formula_feed_finder_change: function() {
+            if (this.formula_feed_finder_id!='none' && !isNaN(this.formula_feed_finder_id)) {
+                this.new_process['formula'].expression += "f"+this.formula_feed_finder_id;
+            }
         }
-        if (out=="") $("#noprocessesalert").show(); else $("#noprocessesalert").hide();
-
-        $("#processlist").html(out);
     }
-    });
+});
+
+load_process_list();
+// Load process list using jquery
+function load_process_list() {
+    $.ajax({ url: path+"postprocess/list", dataType: "json", async: true, success: function(result) {
+        app.process_list = result;
+    }});
 }
 
-$("#processlist").on("click",".runprocess",function(){
-    var z = $(this).attr("processid");
-    var process = processlist[z].process;
-
-    var params = {};
-
-    for (var key in processes[process].settings) {
-
-        if (processes[process].settings[key].type=="feed") {
-            params[key] = processlist[z][key].id;
-        }
-
-        if (processes[process].settings[key].type=="newfeed") {
-            params[key] = processlist[z][key].id;
-        }
-
-        if (processes[process].settings[key].type=="value") {
-            params[key] = processlist[z][key];
-        }
-
-        if (processes[process].settings[key].type=="timezone") {
-            params[key] = processlist[z][key];
-        }
-
-        if (processes[process].settings[key].type=="formula") {
-            params[key] = processlist[z][key].expression;
-        }
+function feed_exists(tag, name) {
+    for (var z in feeds) {
+        if (feeds[z].tag==tag && feeds[z].name==name) return true;
     }
-
-    $.ajax({
-        type: "POST",
-        url: path+"postprocess/update?process="+process,
-        data: JSON.stringify(params),
-        dataType: 'text',
-        async: false,
-        success: function(result) {
-            console.log(result);
-        }
-    });
-});
-
-$("#processlist").on("click",".remove-process",function(){
-    var processid = $(this).attr("processid");
-
-    $.ajax({
-        type: "POST",
-        url: path+"postprocess/remove?processid="+processid,
-        dataType: 'text',
-        async: false,
-        success: function(result) {
-            processlist_update()
-        }
-    });
-});
+    return false;
+}

@@ -1,70 +1,141 @@
 <?php global $path; ?>
-
-<script type="text/javascript" src="<?php echo $path; ?>Modules/feed/feed.js"></script>
+<script src="<?php echo $path; ?>Lib/vue.min.js"></script>
+<script src="<?php echo $path; ?>Modules/feed/feed.js"></script>
 <br>
 
-<h2>Post Processor</h2>
-<p>Rather than process inputs as data arrives in emoncms such as calculating cumulative kWh data from power data with the power to kWh input process, this module can be used to do these kind of processing steps after having recorded base data such as power data for some time. This removes the reliance on setting up everything right in the first instance providing the flexibility to recalculate processed feeds at a later date.</p>
+<h3>Post Processor</h3>
 
+<div id="app">
+
+<div class="alert alert-info"><svg class="icon spinner11"><use xlink:href="#icon-spinner11"></use></svg> Process existing feed data into new feeds.</div>
+
+    <table class="table table-striped" v-if="process_list.length">
+        <tr>
+            <th>Process</th>
+            <th>Parameters</th>
+            <th>Process mode</th>
+            <th>Actions</th>
+
+        </tr>
+        <tr v-for="(item,index) in process_list">
+            <td>{{item.process}}</td>
+            <td>
+                <span v-for="(param,key) in processes[item.process].settings">
+                    <span v-if="param.type=='feed'">
+                        <b>{{key}}:</b>{{item[key].id}}:{{item[key].name}}<br>
+                    </span>
+                    <span v-if="param.type=='newfeed'">
+                        <b>{{key}}:</b>{{item[key].id}}:{{item[key].name}}<br>
+                    </span>
+                    <span v-if="param.type=='value'">
+                        <b>{{key}}:</b>{{item[key]}}<br>
+                    </span>
+                    <span v-if="param.type=='timezone'">
+                        <b>{{key}}:</b>{{item[key]}}<br>
+                    </span>
+                    <span v-if="param.type=='formula'">
+                        <b>{{key}}:</b>{{item[key].expression}}<br>
+                    </span>
+                </span>
+                
+            </td>
+            <td>
+                <span v-if="item.process_mode=='recent'">New data only</span>
+                <span v-if="item.process_mode=='all'">Reprocess all</span>
+                <span v-if="item.process_mode=='from'">Process from {{ item.process_start }}</span>
+            </td>
+            <td>
+                <button class="btn btn-success" @click="run_process(index)">Run</button>
+                <button class="btn btn-info" @click="edit_process(index)">Edit</button>
+                <button class="btn btn-danger" @click="delete_process(index)">Delete</button>
+            </td>
+        </tr>
+    </table>
+
+    <div class="alert" v-if="process_list.length==0"><p><b>No processes created yet</b></p>
+
+    <p>Rather than process inputs as data arrives in emoncms such as calculating cumulative kWh data from power data with the power to kWh input process, this module can be used to do these kind of processing steps after having recorded base data such as power data for some time. This removes the reliance on setting up everything right in the first instance providing the flexibility to recalculate processed feeds at a later date.</p>
+    </div>
+
+    <div class="well" style="max-width:500px">
+        <h4><span v-if="mode=='create'">Create new</span><span v-if="mode=='edit'">Edit process</span></h4>
+
+        <select v-model="new_process_select" @change="new_process_selected">
+            <option value="none">SELECT PROCESS:</option>
+            <optgroup v-for="(group,groupname) in processes_by_group" v-bind:label="groupname">
+                <option v-for="(item,index) in group" >{{index}}</option>
+            </optgroup>
+        </select>
+
+        <div v-if="processes[new_process_select]!=undefined">
+            <span v-for="(param,key) in processes[new_process_select].settings">
+                <div v-if="param.type=='feed' || param.type=='newfeed'">
+                    <b>{{param.short}}</b><br>
+                    <div class="input-append input-prepend">
+                        <select v-model="new_process[key].id" @change="new_process_update" style="width:150px">
+                            <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
+                            <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
+                            <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
+                                <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}</option>
+                            </optgroup>
+                        </select>
+                        <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].tag" placeholder="Tag" style="width:100px" @change="new_process_update"/>
+                        <input type="text" v-if="new_process[key].id=='create'" v-model="new_process[key].name" placeholder="Name" style="width:150px" @change="new_process_update" />
+                    </div>
+                </div>
+                <div v-if="param.type=='value' || param.type=='timezone'">
+                    <b v-html="param.short"></b><br>
+                    <input type="text" v-model="new_process[key]" @change="new_process_update">
+                </div>
+                <div v-if="param.type=='formula'">
+                    <b v-html="param.short"></b><br>
+
+                    <!-- Create a list of available feeds -->
+                    <div class="input-prepend">
+                        <span class="add-on">Feed finder</span>
+                        <select style="width:150px" v-model="formula_feed_finder_id" @change="formula_feed_finder_change">
+                            <option value="none">SELECT FEED:</option>
+                            <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
+                                <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}: f{{feed.id}}</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="input-prepend">
+                        <span class="add-on">Expression</span>
+                        <input type="text" v-model="new_process[key].expression" @change="new_process_update">
+                    </div>
+                </div>
+                <div v-if="param.type=='select'">
+                    <b v-html="param.short"></b><br>
+                    <select v-model="new_process[key]" @change="new_process_update">
+                        <option v-for="(option,optionname) in param.options" v-bind:value="optionname">{{option}}</option>
+                    </select>
+                </div>
+            </span>
+
+            <div class="input-prepend input-append">
+                <span class="add-on">Process:</span>
+                <select v-model="new_process_mode" @change="new_process_update" style="width:150px">
+                    <option value="all">from the start</option>
+                    <option value="from">from timestamp</option>
+                    <option value="recent">recent only</option>
+                </select>
+                <input type="text" v-model="new_process_start" @change="new_process_update" v-if="new_process_mode=='from'" placeholder="timestamp" style="width:100px">
+                <button class="btn btn-success" v-if="new_process_create" @click="create_process">Run</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--
 <hr>
 <button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
 <h3>Logger</h3>
 <div id="logpath"></div>
 <pre id="logreply-bound" class="log"><div id="logreply"></div></pre>
+--->
 
-<hr>
-
-<h3>My processes</h3>
-
-<table class="table">
-<tr>
-    <th>Process</th>
-    <th>Parameters</th>
-    <th></th>
-    <th></th>
-    <th></th>
-    
-</tr>
-<tbody id="processlist"></tbody>
-</table>
-
-<div id="noprocessesalert" style="display:none" class="alert"><i class="icon-th-list"></i> <b>No processes created yet</b></div>
-
-<h3>Create new</h3>
-
-<select id="process_select"></select>
-
-<div id="process_options"></div>
-<button id="create" class="btn" style="display:none">Create</button>
-
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=4"></script>
 <script>
-var logrunning = false;
-var refresher_log;
-function refresherStart(func, interval){
-  clearInterval(refresher_log);
-  refresher_log = null;
-  if (interval > 0) refresher_log = setInterval(func, interval);
-}
-getLog();
-function getLog() {
-  $.ajax({ url: path+"postprocess/getlog", async: true, dataType: "text", success(result)
-    {
-      $("#logreply").html(result);
-      $("#logreply-bound").scrollTop = $("#logreply-bound").scrollHeight;
-    }
-  });
-}
-$("#getlog").click(function() {
-  logrunning = !logrunning;
-  if (logrunning) { refresherStart(getLog, 500); }
-  else { refresherStart(getLog, 0);  }
-});
-//output the logfile path just above the log pre
-$.ajax({ url: path+"postprocess/logpath", async: true, dataType: "text", success(result)
-    {
-      $("#logpath").html("<p>on file: "+result+"</p>");
-    }
-});
-
+    var processes = <?php echo json_encode($processes); ?>;
 </script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=5"></script>
