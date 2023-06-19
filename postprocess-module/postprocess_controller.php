@@ -108,7 +108,7 @@ function postprocess_controller()
         return $postprocess->add_process_to_queue($params);
     }
 
-    if ($route->action == "run") {
+    if ($route->action == "run" && $session['write']) {
         $route->format = "json";
         $processid = (int) get('processid', true);
         if (!$processlist = $postprocess->get($session['userid'])) {
@@ -133,11 +133,11 @@ function postprocess_controller()
         return array("success" => true, "message" => "process removed");
     }
 
-    if ($route->action == 'logpath') {
+    if ($route->action == 'logpath' && $session['write']) {
         return $settings['log']['location'] . "/postprocess.log";
     }
 
-    if ($route->action == 'getlog') {
+    if ($route->action == 'getlog' && $session['write']) {
         $route->format = "text";
         $log_filename = $settings['log']['location'] . "/postprocess.log";
         if (file_exists($log_filename)) {
