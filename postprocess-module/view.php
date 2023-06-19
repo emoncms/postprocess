@@ -123,6 +123,8 @@
                 <input type="text" v-model="new_process_start" @change="new_process_update" v-if="new_process_mode=='from'" placeholder="timestamp" style="width:100px">
                 <button class="btn btn-success" v-if="new_process_create" @click="create_process">Run</button>
             </div>
+
+            <div class="alert alert-error" v-if="new_process_error"><b>Error: </b>{{new_process_error}}</div>
         </div>
     </div>
 </div>

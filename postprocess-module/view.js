@@ -29,7 +29,8 @@ var app = new Vue({
         new_process_create: false,
         mode: 'create',
         selected_process: -1,
-        formula_feed_finder_id: 'none'
+        formula_feed_finder_id: 'none',
+        new_process_error: ''
     },
     methods: {
         new_process_selected: function() {
@@ -43,7 +44,7 @@ var app = new Vue({
                 }
                 if (setting.type=='newfeed') {
                     if (setting.default_tag==undefined) setting.default_tag = "";
-                    this.new_process[key] = {id:"create", tag: setting.default_tag, name: setting.default};
+                    this.new_process[key] = {id:"create", tag: "postprocess", name: setting.default};
                 }
                 if (setting.type=='value') {
                     this.new_process[key] = setting.default;
@@ -152,15 +153,19 @@ var app = new Vue({
                 type: "POST",
                 url: url,
                 data: JSON.stringify(params),
-                dataType: 'text',
+                dataType: 'json',
                 async: false,
                 success: function(result) {
-                    load_process_list();
-
-                    app.new_process_select = 'none';
-                    app.new_process = {};
-                    app.new_process_create = false;
-                    app.mode = 'create';
+                    if (result.success) {
+                        app.new_process_create = false;
+                        app.new_process_select = 'none';
+                        app.new_process_error = '';
+                        app.new_process = {};
+                        app.mode = 'create';
+                        load_process_list();
+                    } else {
+                        app.new_process_error = result.message;
+                    }
                 }
             });
         },

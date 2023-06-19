@@ -5,7 +5,7 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 
 function postprocess_controller()
 {
-    global $linked_modules_dir,$session,$route,$mysqli,$redis,$settings;
+    global $linked_modules_dir, $session, $route, $mysqli, $redis, $settings;
 
     $result = false;
     $route->format = "text";
@@ -16,7 +16,7 @@ function postprocess_controller()
     $postprocess = new PostProcess($mysqli);
 
     include "Modules/feed/feed_model.php";
-    $feed = new Feed($mysqli,$redis,$settings['feed']);
+    $feed = new Feed($mysqli, $redis, $settings['feed']);
 
     // Load available processes descriptions
     $processes = $postprocess->get_processes("$linked_modules_dir/postprocess");
@@ -25,14 +25,14 @@ function postprocess_controller()
     // VIEW
     // -------------------------------------------------------------------------
     if ($route->action == "" && $session['write']) {
-        $result = view("Modules/postprocess/view.php",array("processes"=>$processes));
+        $result = view("Modules/postprocess/view.php", array("processes" => $processes));
         $route->format = "html";
-        return array('content'=>$result);
+        return array('content' => $result);
     }
 
     if ($route->action == "processes" && $session['write']) {
         $route->format = "json";
-        return array('content'=>$processes);
+        return array('content' => $processes);
     }
 
     // -------------------------------------------------------------------------
@@ -44,24 +44,23 @@ function postprocess_controller()
 
         $processlist = $postprocess->get($userid);
 
-        if ($processlist==null) $processlist = array();
+        if ($processlist == null) $processlist = array();
         $processlist_long = array();
         $processlist_valid = array();
 
-        for ($i=0; $i<count($processlist); $i++) {
+        for ($i = 0; $i < count($processlist); $i++) {
             $valid = true;
 
             $item = json_decode(json_encode($processlist[$i]));
 
             $process = $item->process;
             if (isset($processes[$process])) {
-                foreach ($processes[$process]['settings'] as $key=>$option)
-                {
-                    if ($option['type']=="feed" || $option['type']=="newfeed") {
+                foreach ($processes[$process]['settings'] as $key => $option) {
+                    if ($option['type'] == "feed" || $option['type'] == "newfeed") {
                         $id = $processlist[$i]->$key;
                         if ($feed->exist((int)$id)) {
                             $f = $feed->get($id);
-                            if ($f['userid']!=$session['userid']) return false;
+                            if ($f['userid'] != $session['userid']) return false;
                             if ($meta = $feed->get_meta($id)) {
                                 $f['start_time'] = $meta->start_time;
                                 $f['interval'] = $meta->interval;
@@ -80,25 +79,25 @@ function postprocess_controller()
                         }
                     }
 
-                    if ($option['type']=="formula"){
-                        $formula=$processlist[$i]->$key;
-                        $f=array();
-                        $f['expression']=$formula;
+                    if ($option['type'] == "formula") {
+                        $formula = $processlist[$i]->$key;
+                        $f = array();
+                        $f['expression'] = $formula;
                         //we catch feed numbers in the formula
-                        $feed_ids=array();
-                        while(preg_match("/(f\d+)/",$formula,$b)){
-                            $feed_ids[]=substr($b[0],1,strlen($b[0])-1);
-                            $formula=str_replace($b[0],"",$formula);
+                        $feed_ids = array();
+                        while (preg_match("/(f\d+)/", $formula, $b)) {
+                            $feed_ids[] = substr($b[0], 1, strlen($b[0]) - 1);
+                            $formula = str_replace($b[0], "", $formula);
                         }
-                        $all_intervals=array();
-                        $all_start_times=array();
-                        $all_ending_times=array();
+                        $all_intervals = array();
+                        $all_start_times = array();
+                        $all_ending_times = array();
                         //we check feeds existence and stores all usefull metas
-                        foreach($feed_ids as $id) {
-                            if ($feed->exist((int)$id)){
-                                $m=$feed->get_meta($id);
-                                $all_intervals[]=$m->interval;
-                                $all_start_times[]=$m->start_time;
+                        foreach ($feed_ids as $id) {
+                            if ($feed->exist((int)$id)) {
+                                $m = $feed->get_meta($id);
+                                $all_intervals[] = $m->interval;
+                                $all_start_times[] = $m->start_time;
                                 $timevalue = $feed->get_timevalue($id);
                                 $all_ending_times[] = $timevalue["time"];
                             } else {
@@ -106,10 +105,10 @@ function postprocess_controller()
                                 $log->error("Feed $id does not exist");
                             }
                         }
-                        if ($valid){
+                        if ($valid) {
                             $f['interval'] = max($all_intervals);
-                            $f['start_time']= max($all_start_times);
-                            $f['time']= min($all_ending_times);
+                            $f['start_time'] = max($all_start_times);
+                            $f['time'] = min($all_ending_times);
 
                             $item->$key = $f;
                         }
@@ -126,7 +125,7 @@ function postprocess_controller()
             }
         }
 
-        $postprocess->set($userid,$processlist_valid);
+        $postprocess->set($userid, $processlist_valid);
 
         $result = $processlist_long;
 
@@ -137,45 +136,65 @@ function postprocess_controller()
     // CREATE OR UPDATE PROCESS
     // -------------------------------------------------------------------------
     if (($route->action == "create" || $route->action == "edit") && $session['write']) {
-        $route->format = "text";
+        $route->format = "json";
 
-        $process = get('process',true);
+        $process = get('process', true);
 
         if ($route->action == "edit") {
-            $processid = (int) get('processid',true);
+            $processid = (int) get('processid', true);
         }
 
         $params = json_decode(file_get_contents('php://input'));
 
-        foreach ($processes[$process]['settings'] as $key=>$option) {
-           if (!isset($params->$key))
-               return array('content'=>"missing option $key");
+        foreach ($processes[$process]['settings'] as $key => $option) {
+            if (!isset($params->$key))
+                return array('success'=>false, 'message'=>"missing option $key");
 
-            if ($option['type']=="feed" || $option['type']=="newfeed") {
-               $feedid = (int) $params->$key;
-               if ($feedid<1)
-                   return array('content'=>"feed id must be numeric and more than 0");
-               if (!$feed->exist($feedid))
-                   return array('content'=>"feed does not exist");
-               $f = $feed->get($feedid);
-               if ($f['userid']!=$session['userid'])
-                   return array('content'=>"invalid feed");
-               if ($f['engine']!=$option['engine'])
-                   return array('content'=>"incorrect feed engine");
+            if ($option['type'] == "feed" || $option['type'] == "newfeed") {
+                $feedid = (int) $params->$key;
+                if ($feedid < 1)
+                    return array('success'=>false, 'message'=>"feed id must be numeric and more than 0");
+                if (!$feed->exist($feedid))
+                    return array('success'=>false, 'message'=>"feed does not exist");
+                $f = $feed->get($feedid);
+                if ($f['userid'] != $session['userid'])
+                    return array('success'=>false, 'message'=>"invalid feed");
+                if ($f['engine'] != $option['engine'])
+                    return array('success'=>false, 'message'=>"incorrect feed engine");
 
-               $params->$key = $feedid;
-           }
+                $params->$key = $feedid;
+            }
 
-           if ($option['type']=="value") {
-               $value = (float) 1*$params->$key;
-               if ($value!=$params->$key)
-                   return array('content'=>"invalid value");
-           }
+            if ($option['type'] == "value") {
+                $value = (float) 1 * $params->$key;
+                if ($value != $params->$key)
+                    return array('success'=>false, 'message'=>"invalid value");
+            }
 
-           if ($option['type']=="timezone") {
-               if (!$datetimezone = new DateTimeZone($params->$key))
-                   return array('content'=>"invalid timezone");
-           }
+            if ($option['type'] == "timezone") {
+                if (!$datetimezone = new DateTimeZone($params->$key))
+                    return array('success'=>false, 'message'=>"invalid timezone");
+            }
+
+            if ($option['type'] == "formula") {
+                $formula = $params->$key;
+                // find all feed ids in the formula
+                $feed_ids = array();
+                while (preg_match("/(f\d+)/", $formula, $b)) {
+                    $feed_ids[] = substr($b[0], 1, strlen($b[0]) - 1);
+                    $formula = str_replace($b[0], "", $formula);
+                }
+                // check all feed ids exist and belong to the user
+                foreach ($feed_ids as $id) {
+                    if (!$feed->exist((int)$id))
+                        return array('success'=>false, 'message'=>"feed f$id does not exist");
+                    $f = $feed->get($id);
+                    if ($f['userid'] != $session['userid'])
+                        return array('success'=>false, 'message'=>"invalid feed");
+                    if ($f['engine'] != $option['engine'])
+                        return array('success'=>false, 'message'=>"incorrect feed engine");
+                }
+            }
         }
 
         // Set default values if not set
@@ -198,69 +217,67 @@ function postprocess_controller()
         } else {
             $processlist[] = $params;
         }
-        $postprocess->set($session['userid'],$processlist);
-        $redis->lpush("postprocessqueue",json_encode($params));
+        $postprocess->set($session['userid'], $processlist);
+        $redis->lpush("postprocessqueue", json_encode($params));
 
         // -----------------------------------------------------------------
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------
         $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = $settings['log']['location']."/postprocess.log";
-        $redis->rpush("service-runner","$update_script>$update_logfile");
+        $update_logfile = $settings['log']['location'] . "/postprocess.log";
+        $redis->rpush("service-runner", "$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
-
-        $route->format = "json";
-        return array('content'=>$params);
+        return array('success' => true, 'message' => "process created");
     }
 
     if ($route->action == "run") {
         $route->format = "json";
-        $processid = (int) get('processid',true);
+        $processid = (int) get('processid', true);
         if (!$processlist = $postprocess->get($session['userid'])) {
-            return array('success'=>false, 'message'=>"no processes");
+            return array('success' => false, 'message' => "no processes");
         }
         if (!isset($processlist[$processid])) {
-            return array('success'=>false, 'message'=>"process does not exist");
+            return array('success' => false, 'message' => "process does not exist");
         }
-        $redis->lpush("postprocessqueue",json_encode($processlist[$processid]));
+        $redis->lpush("postprocessqueue", json_encode($processlist[$processid]));
         // -----------------------------------------------------------------
         // Run postprocessor script using the emonpi service-runner
         // -----------------------------------------------------------------
         $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-        $update_logfile = $settings['log']['location']."/postprocess.log";
-        $redis->rpush("service-runner","$update_script>$update_logfile");
+        $update_logfile = $settings['log']['location'] . "/postprocess.log";
+        $redis->rpush("service-runner", "$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
-        return array('success'=>true, 'message'=>"process added to queue");
+        return array('success' => true, 'message' => "process added to queue");
     }
-    
+
     if ($route->action == "remove" && $session['write']) {
         $route->format = "json";
-        $processid = (int) get('processid',true);
+        $processid = (int) get('processid', true);
         $processlist = $postprocess->get($session['userid']);
         if (isset($processlist[$processid])) {
-            array_splice($processlist,$processid,1);
+            array_splice($processlist, $processid, 1);
         } else {
-            return array("success"=>false, "message"=>"process does not exist");
+            return array("success" => false, "message" => "process does not exist");
         }
-        $postprocess->set($session['userid'],$processlist);
-        return array("success"=>true, "message"=>"process removed");
+        $postprocess->set($session['userid'], $processlist);
+        return array("success" => true, "message" => "process removed");
     }
 
     if ($route->action == 'logpath') {
-        return $settings['log']['location']."/postprocess.log";
+        return $settings['log']['location'] . "/postprocess.log";
     }
 
     if ($route->action == 'getlog') {
         $route->format = "text";
-        $log_filename = $settings['log']['location']."/postprocess.log";
+        $log_filename = $settings['log']['location'] . "/postprocess.log";
         if (file_exists($log_filename)) {
-          ob_start();
-          passthru("tail -30 $log_filename");
-          $result = trim(ob_get_clean());
-        } else $result="no logging yet available";
+            ob_start();
+            passthru("tail -30 $log_filename");
+            $result = trim(ob_get_clean());
+        } else $result = "no logging yet available";
     }
 
-    return array('content'=>$result, 'fullwidth'=>false);
+    return array('content' => $result, 'fullwidth' => false);
 }
