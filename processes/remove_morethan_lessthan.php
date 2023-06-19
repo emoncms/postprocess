@@ -1,5 +1,7 @@
 <?php
 
+use JetBrains\PhpStorm\ArrayShape;
+
 class PostProcess_remove_morethan_lessthan extends PostProcess_common
 {
     public function description() {
@@ -26,20 +28,14 @@ class PostProcess_remove_morethan_lessthan extends PostProcess_common
         $lessthan = $processitem->lessthan;
     
         if (!$fh = @fopen($dir.$id.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $id.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
-        $npoints = floor(filesize($dir.$id.".dat") / 4.0);
-        if ($npoints==0) {
-            echo "ERROR: npoints is zero\n";
-            return false;
+        if (!$npoints = floor(filesize($dir.$id.".dat") / 4.0)) {
+            return array("success"=>false, "message"=>"feed is empty");
         }
         $fpos = 0;
         $dplefttoread = $npoints;
         $blocksize = 100000;
-        $in_nan_period = 0;
-        $startval = 0;
-        $startpos = 0;
         
         $fix_count = 0;
         
@@ -66,16 +62,11 @@ class PostProcess_remove_morethan_lessthan extends PostProcess_common
                         $fix_count ++;
                     }
                 }
-                
-                if ($dpos%($npoints/10)==0) echo ".";
             }
             $dplefttoread -= $count;
             $fpos += $count;
         }
         fclose($fh);
-        
-        echo "\n";
-        
         echo "nanfix: ".$fix_count." datapoints, ".round(($fix_count/$npoints)*100)."%\n";
         echo "time: ".(microtime(true)-$stime)."\n";
         return array("success"=>true);

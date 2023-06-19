@@ -102,7 +102,7 @@ class PostProcess_accumulator extends PostProcess_common
         
         $time = $input_meta->start_time + ($input_meta->npoints * $input_meta->interval);
         
-        print "last time value: ".$time." ".$value."\n";
+        print "last time value: ".$time." ".$total."\n";
         updatetimevalue($params->output,$time,$total);
         
         return array("success"=>true);

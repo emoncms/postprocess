@@ -20,16 +20,14 @@ class PostProcess_removenan extends PostProcess_common
         
         $dir = $this->dir;
         $id = $processitem->feedid;
-    
+        
         if (!$fh = @fopen($dir.$id.".dat", 'c+')) {
-            echo "ERROR: could not open $dir $id.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
-        $npoints = floor(filesize($dir.$id.".dat") / 4.0);
-        if ($npoints==0) {
-            echo "ERROR: npoints is zero\n";
-            return false;
+        if (!$npoints = floor(filesize($dir.$id.".dat") / 4.0)) {
+            return array("success"=>false, "message"=>"feed is empty");
         }
+
         $fpos = 0;
         $dplefttoread = $npoints;
         $blocksize = 100000;
