@@ -133,11 +133,11 @@ function postprocess_controller()
         return array("success" => true, "message" => "process removed");
     }
 
-    if ($route->action == 'logpath' && $session['write']) {
+    if ($route->action == 'logpath' && $session['admin']) {
         return $settings['log']['location'] . "/postprocess.log";
     }
 
-    if ($route->action == 'getlog' && $session['write']) {
+    if ($route->action == 'getlog' && $session['admin']) {
         $route->format = "text";
         $log_filename = $settings['log']['location'] . "/postprocess.log";
         if (file_exists($log_filename)) {
