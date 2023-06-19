@@ -7,7 +7,7 @@
 
 <div id="app">
 
-<div class="alert alert-info"><svg class="icon spinner11"><use xlink:href="#icon-spinner11"></use></svg> Process existing feed data into new feeds.</div>
+<div class="alert alert-info"><svg class="icon spinner11"><use xlink:href="#icon-spinner11"></use></svg> Process existing PHPFina feed data into new feeds.</div>
 
     <table class="table table-striped" v-if="process_list.length">
         <tr>
