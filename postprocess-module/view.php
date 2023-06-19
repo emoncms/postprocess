@@ -72,7 +72,7 @@
                 <div v-if="param.type=='feed' || param.type=='newfeed'">
                     <b>{{param.short}}</b><br>
                     <div class="input-append input-prepend">
-                        <select v-model="new_process[key]" @change="new_process_update" style="width:150px">
+                        <select v-model="new_process[key]" @change="change_feed_select" style="width:150px">
                             <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
                             <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
@@ -140,4 +140,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=5"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=6"></script>

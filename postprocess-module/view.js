@@ -53,6 +53,33 @@ var app = new Vue({
             this.validate_new_process();
             
         },
+        change_feed_select: function() {
+            // Check if input and output feeds are the same
+            // If so ask the user if they want to continue
+            var input_feedids = [];
+            var output_feedids = [];
+            for (var key in this.processes[this.new_process_select].settings) {
+                let setting = this.processes[this.new_process_select].settings[key];
+                if (setting.type=='feed')
+                    input_feedids.push(this.new_process[key]*1);
+                if (setting.type=='newfeed')
+                    output_feedids.push(this.new_process[key]*1);
+            }
+            // Check if any of the input feeds are in the output feeds
+            var same = false;
+            for (var i=0; i<input_feedids.length; i++) {
+                if (output_feedids.indexOf(input_feedids[i])>-1) {
+                    same = true;
+                }
+            }
+            if (same) {
+                if (!confirm("Warning: You have selected an output feed that matches an input feed. This will cause the input feed to be overwritten. Are you sure you want to continue?")) {
+                    this.new_process[this.formula_feed_finder_id] = 'none';
+                    return false;
+                }
+            }
+            this.new_process_update();
+        },
         new_process_update: function() {
             this.new_process_create = true;
             this.validate_new_process();
