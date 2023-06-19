@@ -20,7 +20,7 @@ class PostProcess_basic_formula extends PostProcess_common
             "group"=>"Formula",
             "description"=>"Basic formula",
             "settings"=>array(
-                "formula"=>array("type"=>"formula", "short"=>$bfdescription),
+                "formula"=>array("type"=>"formula", "short"=>$bfdescription, "engine"=>5),
                 "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name :")
             )
         );

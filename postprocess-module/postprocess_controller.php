@@ -189,8 +189,8 @@ function postprocess_controller()
                     if (!$feed->exist((int)$id))
                         return array('success'=>false, 'message'=>"feed f$id does not exist");
                     $f = $feed->get($id);
-                    if ($f['userid'] != $session['userid'])
-                        return array('success'=>false, 'message'=>"invalid feed");
+                    if ($f['userid'] != $session['userid'] && !$f['public'])
+                        return array('success'=>false, 'message'=>"invalid feed access");
                     if ($f['engine'] != $option['engine'])
                         return array('success'=>false, 'message'=>"incorrect feed engine");
                 }
