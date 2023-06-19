@@ -186,6 +186,7 @@ var app = new Vue({
                         app.new_process = {};
                         app.mode = 'create';
                         load_process_list();
+                        alert(result.message);
                     } else {
                         app.new_process_error = result.message;
                     }
@@ -225,7 +226,7 @@ var app = new Vue({
                 async: true,
                 success: function(result) {
                     if (result.success) {
-                        alert("Success: "+result.message);
+                        alert(result.message);
                     } else {
                         alert("Error starting process: "+result.message);
                     }

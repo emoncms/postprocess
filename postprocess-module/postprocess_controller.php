@@ -115,7 +115,13 @@ function postprocess_controller()
         $redis->rpush("service-runner", "$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
-        return array('success' => true, 'message' => "process created");
+
+        // Check if service-runner.service is running
+        if ($postprocess->check_service_runner()) {
+            return array('success' => true, 'message' => "Process added to queue");
+        } else {
+            return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
+        }
     }
 
     if ($route->action == "run") {
@@ -136,7 +142,12 @@ function postprocess_controller()
         $redis->rpush("service-runner", "$update_script>$update_logfile");
         $result = "service-runner trigger sent";
         // -----------------------------------------------------------------
-        return array('success' => true, 'message' => "process added to queue");
+        // Check if service-runner.service is running
+        if ($postprocess->check_service_runner()) {
+            return array('success' => true, 'message' => "Process added to queue");
+        } else {
+            return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
+        }
     }
 
     if ($route->action == "remove" && $session['write']) {

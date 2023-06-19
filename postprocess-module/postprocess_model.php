@@ -152,4 +152,15 @@ class PostProcess
 
         return array('success'=>true);
     }
+
+    public function check_service_runner() {
+        $service_running = false;
+        @exec("systemctl show service-runner | grep State", $output);
+        foreach ($output as $line) {
+            if (strpos($line, "ActiveState=active") !== false) {
+                $service_running = true;
+            }
+        }
+        return $service_running;
+    }
 }
