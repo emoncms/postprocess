@@ -12,11 +12,11 @@ function postprocess_controller()
 
     $log = new EmonLogger(__FILE__);
 
-    include "Modules/postprocess/postprocess_model.php";
-    $postprocess = new PostProcess($mysqli);
-
     include "Modules/feed/feed_model.php";
     $feed = new Feed($mysqli, $redis, $settings['feed']);
+
+    include "Modules/postprocess/postprocess_model.php";
+    $postprocess = new PostProcess($mysqli, $feed);
 
     // Load available processes descriptions
     $processes = $postprocess->get_processes("$linked_modules_dir/postprocess");
@@ -138,72 +138,25 @@ function postprocess_controller()
     if (($route->action == "create" || $route->action == "edit") && $session['write']) {
         $route->format = "json";
 
+        // this is the process name
         $process = get('process', true);
-
-        if ($route->action == "edit") {
+        // if we are editing, we need the process id
+        if ($route->action == "edit")
             $processid = (int) get('processid', true);
-        }
-
+        // process parameters in the post body
         $params = json_decode(file_get_contents('php://input'));
+        
+        // validate parameters, check valid feeds etc
+        $result = $postprocess->validate_params($session['userid'],$process,$params);
+        if (!$result['success']) return $result;
 
-        foreach ($processes[$process]['settings'] as $key => $option) {
-            if (!isset($params->$key))
-                return array('success'=>false, 'message'=>"missing option $key");
-
-            if ($option['type'] == "feed" || $option['type'] == "newfeed") {
-                $feedid = (int) $params->$key;
-                if ($feedid < 1)
-                    return array('success'=>false, 'message'=>"feed id must be numeric and more than 0");
-                if (!$feed->exist($feedid))
-                    return array('success'=>false, 'message'=>"feed does not exist");
-                $f = $feed->get($feedid);
-                if ($f['userid'] != $session['userid'])
-                    return array('success'=>false, 'message'=>"invalid feed");
-                if ($f['engine'] != $option['engine'])
-                    return array('success'=>false, 'message'=>"incorrect feed engine");
-
-                $params->$key = $feedid;
-            }
-
-            if ($option['type'] == "value") {
-                $value = (float) 1 * $params->$key;
-                if ($value != $params->$key)
-                    return array('success'=>false, 'message'=>"invalid value");
-            }
-
-            if ($option['type'] == "timezone") {
-                if (!$datetimezone = new DateTimeZone($params->$key))
-                    return array('success'=>false, 'message'=>"invalid timezone");
-            }
-
-            if ($option['type'] == "formula") {
-                $formula = $params->$key;
-                // find all feed ids in the formula
-                $feed_ids = array();
-                while (preg_match("/(f\d+)/", $formula, $b)) {
-                    $feed_ids[] = substr($b[0], 1, strlen($b[0]) - 1);
-                    $formula = str_replace($b[0], "", $formula);
-                }
-                // check all feed ids exist and belong to the user
-                foreach ($feed_ids as $id) {
-                    if (!$feed->exist((int)$id))
-                        return array('success'=>false, 'message'=>"feed f$id does not exist");
-                    $f = $feed->get($id);
-                    if ($f['userid'] != $session['userid'] && !$f['public'])
-                        return array('success'=>false, 'message'=>"invalid feed access");
-                    if ($f['engine'] != $option['engine'])
-                        return array('success'=>false, 'message'=>"incorrect feed engine");
-                }
-            }
-        }
-
-        // Set default values if not set
-        if (!isset($params->process_mode)) {
+        // process_mode and process_start are not included in the process description
+        // so we need to add them here if they are not set
+        if (!isset($params->process_mode))
             $params->process_mode = "recent";
-        }
-        if (!isset($params->process_start)) {
+        if (!isset($params->process_start))
             $params->process_start = 0;
-        }
+
         $params->process = $process;
 
         // If we got this far the input parameters are valid.

@@ -16,10 +16,13 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 class PostProcess
 {
     private $mysqli;
+    private $feed;
+    private $processes = array();
 
-    public function __construct($mysqli) 
+    public function __construct($mysqli,$feed) 
     {
         $this->mysqli = $mysqli;
+        $this->feed = $feed;
     }
         
     public function set($userid,$data)
@@ -89,7 +92,64 @@ class PostProcess
                 }
             }
         }
-    
+        $this->processes = $processes;
         return $processes;
+    }
+
+    // Validate process parameters
+    public function validate_params($userid,$process,$params) {
+
+        foreach ($this->processes[$process]['settings'] as $key => $option) {
+            if (!isset($params->$key))
+                return array('success'=>false, 'message'=>"missing option $key");
+
+            if ($option['type'] == "feed" || $option['type'] == "newfeed") {
+                $feedid = (int) $params->$key;
+                if ($feedid < 1)
+                    return array('success'=>false, 'message'=>"feed id must be numeric and more than 0");
+                if (!$this->feed->exist($feedid))
+                    return array('success'=>false, 'message'=>"feed does not exist");
+                $f = $this->feed->get($feedid);
+                if ($f['userid'] != $userid)
+                    return array('success'=>false, 'message'=>"invalid feed");
+                if ($f['engine'] != $option['engine'])
+                    return array('success'=>false, 'message'=>"incorrect feed engine");
+
+                $params->$key = $feedid;
+            }
+
+            if ($option['type'] == "value") {
+                $value = (float) 1 * $params->$key;
+                if ($value != $params->$key)
+                    return array('success'=>false, 'message'=>"invalid value");
+            }
+
+            if ($option['type'] == "timezone") {
+                if (!$datetimezone = new DateTimeZone($params->$key))
+                    return array('success'=>false, 'message'=>"invalid timezone");
+            }
+
+            if ($option['type'] == "formula") {
+                $formula = $params->$key;
+                // find all feed ids in the formula
+                $feed_ids = array();
+                while (preg_match("/(f\d+)/", $formula, $b)) {
+                    $feed_ids[] = substr($b[0], 1, strlen($b[0]) - 1);
+                    $formula = str_replace($b[0], "", $formula);
+                }
+                // check all feed ids exist and belong to the user
+                foreach ($feed_ids as $id) {
+                    if (!$this->feed->exist((int)$id))
+                        return array('success'=>false, 'message'=>"feed f$id does not exist");
+                    $f = $this->feed->get($id);
+                    if ($f['userid'] != $userid && !$f['public'])
+                        return array('success'=>false, 'message'=>"invalid feed access");
+                    if ($f['engine'] != $option['engine'])
+                        return array('success'=>false, 'message'=>"incorrect feed engine");
+                }
+            }
+        }
+
+        return array('success'=>true);
     }
 }
