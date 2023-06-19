@@ -16,7 +16,7 @@ function postprocess_controller()
     $feed = new Feed($mysqli, $redis, $settings['feed']);
 
     include "Modules/postprocess/postprocess_model.php";
-    $postprocess = new PostProcess($mysqli, $feed);
+    $postprocess = new PostProcess($mysqli, $redis, $feed);
 
     // Load available processes descriptions
     $processes = $postprocess->get_processes("$linked_modules_dir/postprocess");
@@ -105,26 +105,7 @@ function postprocess_controller()
             $processlist[] = $params;
         }
         $postprocess->set($session['userid'], $processlist);
-        $redis->lpush("postprocessqueue", json_encode($params));
-
-        // Check if post_processor is being ran by cron
-        if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
-            if ($settings['postprocess']['cron_enabled']) {
-                return array('success' => true, 'message' => "Process added to queue");
-            }
-        }
-
-        // Check if service-runner.service is running
-        if ($postprocess->check_service_runner()) {
-            // Ask service-runner to run postprocess script
-            $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-            $update_logfile = $settings['log']['location'] . "/postprocess.log";
-            $redis->rpush("service-runner", "$update_script>$update_logfile");
-
-            return array('success' => true, 'message' => "Process added to queue");
-        } else {
-            return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
-        }
+        return $postprocess->add_process_to_queue($params);
     }
 
     if ($route->action == "run") {
@@ -136,26 +117,7 @@ function postprocess_controller()
         if (!isset($processlist[$processid])) {
             return array('success' => false, 'message' => "process does not exist");
         }
-        $redis->lpush("postprocessqueue", json_encode($processlist[$processid]));
-
-        // Check if post_processor is being ran by cron
-        if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
-            if ($settings['postprocess']['cron_enabled']) {
-                return array('success' => true, 'message' => "Process added to queue");
-            }
-        }
-
-        // Check if service-runner.service is running
-        if ($postprocess->check_service_runner()) {
-            // Ask service-runner to run postprocess script
-            $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-            $update_logfile = $settings['log']['location'] . "/postprocess.log";
-            $redis->rpush("service-runner", "$update_script>$update_logfile");
-
-            return array('success' => true, 'message' => "Process added to queue");
-        } else {
-            return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
-        }
+        return $postprocess->add_process_to_queue($processlist[$processid]);
     }
 
     if ($route->action == "remove" && $session['write']) {

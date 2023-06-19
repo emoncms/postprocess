@@ -16,12 +16,14 @@ defined('EMONCMS_EXEC') or die('Restricted access');
 class PostProcess
 {
     private $mysqli;
+    private $redis;
     private $feed;
     private $processes = array();
 
-    public function __construct($mysqli,$feed) 
+    public function __construct($mysqli,$redis,$feed) 
     {
         $this->mysqli = $mysqli;
+        $this->redis = $redis;
         $this->feed = $feed;
     }
         
@@ -162,5 +164,32 @@ class PostProcess
             }
         }
         return $service_running;
+    }
+
+    public function add_process_to_queue($process) {
+        if (!$this->redis) {
+            return array('success' => false, 'message' => "Redis not connected");
+        }
+        $this->redis->lpush("postprocessqueue", json_encode($process));
+
+        // Check if post_processor is being ran by cron
+        if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
+            if ($settings['postprocess']['cron_enabled']) {
+                return array('success' => true, 'message' => "Process added to queue");
+            }
+        }
+
+        // Check if service-runner.service is running
+        if ($this->check_service_runner()) {
+            global $settings, $linked_modules_dir;
+            // Ask service-runner to run postprocess script
+            $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
+            $update_logfile = $settings['log']['location'] . "/postprocess.log";
+            $this->redis->rpush("service-runner", "$update_script>$update_logfile");
+
+            return array('success' => true, 'message' => "Process added to queue");
+        } else {
+            return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
+        }
     }
 }
