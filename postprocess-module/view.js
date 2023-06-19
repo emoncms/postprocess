@@ -6,14 +6,9 @@ for (var key in processes) {
     processes_by_group[group][key] = processes[key];
 }
 
-var feeds = feed.list();
-// feeds by tag
+var feeds = [];
 var feeds_by_tag = {};
-for (var z in feeds) {
-    var f = feeds[z];
-    if (feeds_by_tag[f.tag]==undefined) feeds_by_tag[f.tag] = {};
-    feeds_by_tag[f.tag][f.id] = f;
-}
+reload_feeds();
 
 var app = new Vue({
     el: '#app',
@@ -117,8 +112,9 @@ var app = new Vue({
                         var result = feed.create(this.new_process[key].tag, this.new_process[key].name, 5, {interval:3600}, '');
                         if (result.success) {
                             params[key] = result.feedid;
+                            reload_feeds();
                         } else {
-                            alert("Error creating feed: "+result.message);
+                            app.new_process_error = result.message;
                             return false;
                         }
                     } else {
@@ -228,4 +224,15 @@ function feed_exists(tag, name) {
         if (feeds[z].tag==tag && feeds[z].name==name) return true;
     }
     return false;
+}
+
+function reload_feeds() {
+    feeds = feed.list();
+    // feeds by tag
+    feeds_by_tag = {};
+    for (var z in feeds) {
+        var f = feeds[z];
+        if (feeds_by_tag[f.tag]==undefined) feeds_by_tag[f.tag] = {};
+        feeds_by_tag[f.tag][f.id] = f;
+    }
 }
