@@ -59,7 +59,8 @@ function postprocess_controller()
 
     if ($route->action == "run") {
         $processid = (int) get('processid', true);
-        return $postprocess->update_status($session['userid'], $processid, "queued");
+        $postprocess->update_status($session['userid'], $processid, "queued");
+        return $postprocess->trigger_service_runner();
     }
 
     if ($route->action == "remove") {
