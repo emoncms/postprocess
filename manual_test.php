@@ -21,7 +21,10 @@ $feed->clear($output_feedid);
 $process = new PostProcess_powertokwh($settings["feed"]["phpfina"]["datadir"]);
 $result = $process->process((object)array(
     "input"=>$feed->get_id($userid,"solar"),
-    "output"=>$output_feedid
+    "output"=>$output_feedid,
+    "max_power"=>10000,
+    "min_power"=>-10000,
+    "process_mode"=>"all"
 ));
 if (!$result["success"]) {
     print "Error: ".$result["message"]."\n";
