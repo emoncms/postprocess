@@ -40,7 +40,9 @@ function postprocess_controller()
     // -------------------------------------------------------------------------
     if ($route->action == "list" && $session['write']) {
         $route->format = "json";
-        if (!$processlist = $postprocess->get($session['userid'])) {
+        return $postprocess->get_list($session['userid']);
+        /*
+        if (!)) {
             $processlist = array();
         }
         $processlist_long = array();
@@ -63,74 +65,32 @@ function postprocess_controller()
             }
         }
         $postprocess->set($session['userid'], $processlist_valid);
-        $result = $processlist_long;
+        $result = $processlist_long;*/
     }
 
-    // -------------------------------------------------------------------------
-    // CREATE OR UPDATE PROCESS
-    // -------------------------------------------------------------------------
-    if (($route->action == "create" || $route->action == "edit") && $session['write']) {
+    if ($route->action == "create" && $session['write']) {
         $route->format = "json";
-
-        // this is the process name
-        $process = get('process', true);
-        // if we are editing, we need the process id
-        if ($route->action == "edit")
-            $processid = (int) get('processid', true);
-        // process parameters in the post body
         $params = json_decode(file_get_contents('php://input'));
-        
-        // validate parameters, check valid feeds etc
-        $result = $postprocess->validate_params($session['userid'],$process,$params);
-        if (!$result['success']) return $result;
+        return $postprocess->add($session['userid'], $params);
+    }
 
-        // process_mode and process_start are not included in the process description
-        // so we need to add them here if they are not set
-        if (!isset($params->process_mode))
-            $params->process_mode = "recent";
-        if (!isset($params->process_start))
-            $params->process_start = 0;
-
-        $params->process = $process;
-
-        // If we got this far the input parameters are valid.
-        if (!$processlist = $postprocess->get($session['userid'])) {
-            $processlist = array();
-        }
-        if ($route->action == "edit") {
-            if (isset($processlist[$processid])) {
-                $processlist[$processid] = $params;
-            }
-        } else {
-            $processlist[] = $params;
-        }
-        $postprocess->set($session['userid'], $processlist);
-        return $postprocess->add_process_to_queue($params);
+    if ($route->action == 'edit' && $session['write']) {
+        $route->format = "json";
+        $processid = (int) get('processid', true);       
+        $params = json_decode(file_get_contents('php://input'));
+        return $postprocess->update($session['userid'], $processid, $params);
     }
 
     if ($route->action == "run" && $session['write']) {
         $route->format = "json";
         $processid = (int) get('processid', true);
-        if (!$processlist = $postprocess->get($session['userid'])) {
-            return array('success' => false, 'message' => "no processes");
-        }
-        if (!isset($processlist[$processid])) {
-            return array('success' => false, 'message' => "process does not exist");
-        }
-        return $postprocess->add_process_to_queue($processlist[$processid]);
+        return $postprocess->update_status($session['userid'], $processid, "queued");
     }
 
     if ($route->action == "remove" && $session['write']) {
         $route->format = "json";
         $processid = (int) get('processid', true);
-        $processlist = $postprocess->get($session['userid']);
-        if (isset($processlist[$processid])) {
-            array_splice($processlist, $processid, 1);
-        } else {
-            return array("success" => false, "message" => "process does not exist");
-        }
-        $postprocess->set($session['userid'], $processlist);
-        return array("success" => true, "message" => "process removed");
+        return $postprocess->remove($session['userid'], $processid);
     }
 
     if ($route->action == 'logpath' && $session['admin']) {

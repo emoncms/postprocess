@@ -166,10 +166,11 @@ var app = new Vue({
             // how much of the input data is processed
             params['process_mode'] = this.new_process_mode;
             params['process_start'] = this.new_process_from;
+            params['process'] = this.new_process_select;
 
-            var url = path+"postprocess/create?process="+this.new_process_select;
+            var url = path+"postprocess/create";
             if (this.mode=='edit') {
-                url = path+"postprocess/edit?process="+this.new_process_select+"&processid="+this.selected_process;
+                url = path+"postprocess/edit?processid="+this.selected_process;
             }
 
             $.ajax({
@@ -186,7 +187,9 @@ var app = new Vue({
                         app.new_process = {};
                         app.mode = 'create';
                         load_process_list();
-                        alert(result.message);
+                        setTimeout(function() {
+                            alert(result.message);
+                        },100);
                     } else {
                         app.new_process_error = result.message;
                     }
@@ -211,13 +214,13 @@ var app = new Vue({
         },
         edit_process: function(index) {
             // load process to new process form
-            app.new_process_select = app.process_list[index].process;
-            app.new_process = app.process_list[index];
+            app.new_process_select = app.process_list[index].params.process;
+            app.new_process = app.process_list[index].params;
             app.new_process_create = true;
             app.mode = 'edit';
             app.selected_process = index;
-            app.new_process_mode = app.process_list[index].process_mode;
-            app.new_process_from = app.process_list[index].process_start;
+            app.new_process_mode = app.process_list[index].params.process_mode;
+            app.new_process_from = app.process_list[index].params.process_start;
         },
         run_process: function(index) {
             $.ajax({
@@ -236,6 +239,23 @@ var app = new Vue({
         formula_feed_finder_change: function() {
             if (this.formula_feed_finder_id!='none' && !isNaN(this.formula_feed_finder_id)) {
                 this.new_process['formula'] += "f"+this.formula_feed_finder_id;
+            }
+        }
+    },
+    filters: {
+        time_ago: function (value) {
+            var date = new Date();
+            var time = date.getTime()*0.001;
+            var ago = time - value;
+
+            if (ago<60) {
+                return "Last updated: "+Math.round(ago)+" seconds ago";
+            } else if (ago<3600) {
+                return "Last updated: "+Math.round(ago/60)+" minutes ago";
+            } else if (ago<86400) {
+                return "Last updated: "+Math.round(ago/3600)+" hours ago";
+            } else {
+                return "Last updated: "+Math.round(ago/86400)+" days ago";
             }
         }
     }

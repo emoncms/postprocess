@@ -19,6 +19,8 @@ class PostProcess
     private $redis;
     private $feed;
     private $processes = array();
+    private $process_classes = array();
+    public $datadir = "/var/opt/emoncms/phpfina/";
 
     public function __construct($mysqli,$redis,$feed) 
     {
@@ -26,42 +28,139 @@ class PostProcess
         $this->redis = $redis;
         $this->feed = $feed;
     }
-        
-    public function set($userid,$data)
+
+    public function add($userid,$params)
     {
         $userid = (int) $userid;
-        // $data = preg_replace('/[^\w\s\-.",:#{}\[\]]/','',$data);
-        $data = json_encode($data);
-        
-        if ($this->get($userid)===false) {
-            $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, data ) VALUES (?,?)");
-            $stmt->bind_param("is", $userid, $data);
-            if ($stmt->execute()) return true; 
-        } else {
-            $stmt = $this->mysqli->prepare("UPDATE postprocess SET `data`=? WHERE userid=?");
-            $stmt->bind_param("si", $data, $userid);
-            if ($stmt->execute()) return true;
+        if (!isset($params->process)) {
+            return array('success'=>false,'message'=>'Process not specified');
         }
-        return false;
+        if (!isset($this->processes[$params->process])) {
+            return array('success'=>false,'message'=>'Process does not exist');
+        }
+        $result = $this->validate_params($userid,$params);
+        if (!$result['success']) return $result;
+
+        // process_mode and process_start are not included in the process description
+        // so we need to add them here if they are not set
+        if (!isset($params->process_mode))
+            $params->process_mode = "recent";
+        if (!isset($params->process_start))
+            $params->process_start = 0;
+
+        // Fetch count of processes for this user
+        $result = $this->mysqli->query("SELECT COUNT(*) AS count FROM postprocess WHERE userid='$userid'");
+        $row = $result->fetch_object();
+        $processid = $row->count;
+
+        $params = json_encode($params);
+        $status = "queued";
+        $status_updated = time();
+
+        // Insert into using prepared statement
+        $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, processid, status, status_updated, params ) VALUES (?,?,?,?,?)");
+        $stmt->bind_param("iisis", $userid, $processid, $status, $status_updated, $params);
+        if ($stmt->execute()) {
+            return $this->add_process_to_queue($params);
+        } else {
+            return array('success'=>false,'message'=>'SQL error');
+        }
     }
-    
-    public function get($userid)
+
+    public function update($userid,$processid,$params)
     {
         $userid = (int) $userid;
-        $result = $this->mysqli->query("SELECT data FROM postprocess WHERE `userid`='$userid'");
-        if ($result->num_rows > 0) {
-            if ($row = $result->fetch_object()) {
-                $data = json_decode($row->data);
-                if (!$data || $data==null) $data = array();
-                return $data;
+        $processid = (int) $processid;
+
+        $result = $this->validate_params($userid,$params);
+        if (!$result['success']) return $result;
+        
+        $params = json_encode($params);
+        $status = "queued";
+        $status_updated = time();
+
+        $stmt = $this->mysqli->prepare("UPDATE postprocess SET params=?, status=?, status_updated=? WHERE userid=? AND processid=?");
+        $stmt->bind_param("ssiii", $params, $status, $status_updated, $userid, $processid);
+        if ($stmt->execute()) {
+            $affected_rows = $stmt->affected_rows;
+            $stmt->close();
+            if ($affected_rows==0) {
+                return array('success'=>false,'message'=>'Process does not exist');
+            } else {
+                // return array('success'=>true, 'message'=>'Process updated');
+                return $this->add_process_to_queue($params);
+            }
+        } else {
+            return array('success'=>false,'message'=>'SQL error');
+        }
+    }
+
+    public function update_status($userid,$processid,$status)
+    {
+        $userid = (int) $userid;
+        $processid = (int) $processid;
+        $status = preg_replace("/[^a-zA-Z0-9]+/", "", $status);
+        $status_updated = time();
+
+        // Only update if status is different
+        $result = $this->mysqli->query("SELECT status FROM postprocess WHERE userid='$userid' AND processid='$processid'");
+        $row = $result->fetch_object();
+        if ($row->status==$status) return array('success'=>true, 'message'=>'Process status updated');
+
+        $stmt = $this->mysqli->prepare("UPDATE postprocess SET status=?, status_updated=? WHERE userid=? AND processid=?");
+        $stmt->bind_param("siii", $status, $status_updated, $userid, $processid);
+        if ($stmt->execute()) {
+            $affected_rows = $stmt->affected_rows;
+            $stmt->close();
+            if ($affected_rows==0) {
+                return array('success'=>false,'message'=>'Process does not exist');
+            } else {
+                return array('success'=>true, 'message'=>'Process status updated');
+            }
+        } else {
+            return array('success'=>false,'message'=>'SQL error');
+        }
+    }
+
+    public function remove($userid,$processid) {
+        $userid = (int) $userid;
+        $processid = (int) $processid;
+        $stmt = $this->mysqli->prepare("DELETE FROM postprocess WHERE userid=? AND processid=?");
+        $stmt->bind_param("ii", $userid, $processid);
+        if ($stmt->execute()) {
+            $affected_rows = $stmt->affected_rows;
+            $stmt->close();
+            if ($affected_rows==0) {
+                return array('success'=>false,'message'=>'Process does not exist');
+            } else {
+                return array('success'=>true, 'message'=>'Process removed');
+            }
+        } else {
+            return array('success'=>false,'message'=>'SQL error');
+        }
+    }
+
+    public function get_list($userid) {
+        $userid = (int) $userid;
+        $result = $this->mysqli->query("SELECT processid,status,status_updated,params FROM postprocess WHERE userid='$userid'");
+        $processes = array();
+        while ($row = $result->fetch_object()) {
+            if ($row->params) {
+                $row->params = json_decode($row->params);
+                $row->processid = (int) $row->processid;
+                $row->status_updated = (int) $row->status_updated;
+                $processes[] = $row;
             }
         }
-        return false;
+        return $processes;
     }
-    
-    public function clear_all($userid) 
-    {
-    
+
+    public function get_process($userid,$processid) {
+        $userid = (int) $userid;
+        $processid = (int) $processid;
+        $result = $this->mysqli->query("SELECT * FROM postprocess WHERE userid='$userid' AND processid='$processid'");
+        $row = $result->fetch_object();
+        return $row;
     }
 
     // Get all processes
@@ -70,6 +169,7 @@ class PostProcess
         require_once($dir."/common.php");
 
         $processes = array();
+        $this->process_classes = array();
     
         $dir = $dir."/processes";
         $files = scandir($dir);
@@ -83,7 +183,8 @@ class PostProcess
 
                 if (class_exists("PostProcess_".$process_name)) {
                     $process_class = "PostProcess_".$process_name;
-                    $process = new $process_class($dir);
+                    $process = new $process_class($this->datadir);
+                    $this->process_classes[$process_name] = $process;
 
                     if (method_exists($process,"description")) {
                         $process_description = $process->description();
@@ -98,8 +199,17 @@ class PostProcess
         return $processes;
     }
 
+    public function get_process_classes() {
+        return $this->process_classes;
+    }
+
     // Validate process parameters
-    public function validate_params($userid,$process,$params) {
+    public function validate_params($userid,$params) {
+
+        if (!isset($params->process))
+            return array('success'=>false, 'message'=>"missing process");
+
+        $process = $params->process;
 
         foreach ($this->processes[$process]['settings'] as $key => $option) {
             if (!isset($params->$key))
@@ -167,16 +277,15 @@ class PostProcess
     }
 
     public function add_process_to_queue($process) {
-        if (!$this->redis) {
-            return array('success' => false, 'message' => "Redis not connected");
-        }
-        $this->redis->lpush("postprocessqueue", json_encode($process));
-
         // Check if post_processor is being ran by cron
         if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
             if ($settings['postprocess']['cron_enabled']) {
                 return array('success' => true, 'message' => "Process added to queue");
             }
+        }
+
+        if (!$this->redis) {
+            return array('success' => false, 'message' => "Redis not connected");
         }
 
         // Check if service-runner.service is running
@@ -191,5 +300,28 @@ class PostProcess
         } else {
             return array('success' => true, 'message' => "Process added to queue but service-runner not running. Please run postprocess_run.php manually or install service-runner");
         }
+    }
+
+    // Return number of processes in queue
+    public function get_process_queue_count() {
+        $result = $this->mysqli->query("SELECT COUNT(*) AS count FROM postprocess WHERE status='queued' OR status='running'");
+        $row = $result->fetch_object();
+        return (int) $row->count;
+    }
+
+    // Pop process from queue
+    public function pop_process_queue() {
+        $result = $this->mysqli->query("SELECT userid,processid,status,status_updated,params FROM postprocess WHERE status='queued' OR status='running' ORDER BY status_updated ASC LIMIT 1");
+        $process = $result->fetch_object();
+        if ($process) {
+            $process->params = json_decode($process->params);
+            $process->userid = (int) $process->userid;
+            $process->processid = (int) $process->processid;
+            $process->status_updated = (int) $process->status_updated;
+            $this->mysqli->query("UPDATE postprocess SET status='running',status_updated=UNIX_TIMESTAMP() WHERE processid=".$process->processid);
+        } else {
+            $process = false;
+        }
+        return $process;
     }
 }

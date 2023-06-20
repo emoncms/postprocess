@@ -14,36 +14,48 @@
             <th>Process</th>
             <th>Parameters</th>
             <th>Process mode</th>
+            <th>Status</th>
             <th>Actions</th>
 
         </tr>
         <tr v-for="(item,index) in process_list">
-            <td>{{item.process}}</td>
+            <td>{{item.params.process}}</td>
             <td>
-                <span v-for="(param,key) in processes[item.process].settings">
+                <span v-for="(param,key) in processes[item.params.process].settings">
                     <span v-if="param.type=='feed'">
-                        <b>{{key}}:</b>{{item[key]}}:{{feeds_by_id[item[key]].name}}<br>
+                        <b>{{key}}:</b>{{item.params[key]}}:
+                        <span v-if="feeds_by_id[item.params[key]]!=undefined">{{feeds_by_id[item.params[key]].name}}</span>
+                        <span v-else>Feed not found</span>
+                        <br>
                     </span>
                     <span v-if="param.type=='newfeed'">
-                        <b>{{key}}:</b>{{item[key]}}:{{feeds_by_id[item[key]].name}}<br>
+                        <b>{{key}}:</b>{{item.params[key]}}:
+                        <span v-if="feeds_by_id[item.params[key]]!=undefined">{{feeds_by_id[item.params[key]].name}}</span>
+                        <span v-else>Feed not found</span>
+                        <br>
                     </span>
                     <span v-if="param.type=='value'">
-                        <b>{{key}}:</b>{{item[key]}}<br>
+                        <b>{{key}}:</b>{{item.params[key]}}<br>
                     </span>
                     <span v-if="param.type=='timezone'">
-                        <b>{{key}}:</b>{{item[key]}}<br>
+                        <b>{{key}}:</b>{{item.params[key]}}<br>
                     </span>
                     <span v-if="param.type=='formula'">
-                        <b>{{key}}:</b>{{item[key]}}<br>
+                        <b>{{key}}:</b>{{item.params[key]}}<br>
                     </span>
                 </span>
                 
             </td>
             <td>
-                <span v-if="item.process_mode=='recent'">New data only</span>
-                <span v-if="item.process_mode=='all'">Reprocess all</span>
-                <span v-if="item.process_mode=='from'">Process from {{ item.process_start }}</span>
+                <span v-if="item.params.process_mode=='recent'">New data only</span>
+                <span v-if="item.params.process_mode=='all'">Reprocess all</span>
+                <span v-if="item.params.process_mode=='from'">Process from {{ item.process_start }}</span>
             </td>
+            <td>
+                <span v-if="item.status=='queued'" :title="item.status_updated | time_ago" class="label label-info">Queued</span>
+                <span v-if="item.status=='running'" :title="item.status_updated | time_ago" class="label label-warning">Running</span>
+                <span v-if="item.status=='finished'" :title="item.status_updated | time_ago" class="label label-success">Finished</span>
+                <span v-if="item.status=='error'" :title="item.status_updated | time_ago" class="label label-danger">Error</span>
             <td>
                 <button class="btn btn-success" @click="run_process(index)">Run</button>
                 <button class="btn btn-info" @click="edit_process(index)">Edit</button>
@@ -140,4 +152,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=6"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=7"></script>
