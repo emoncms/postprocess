@@ -2,24 +2,23 @@
 
 Rather than process inputs as data arrives in emoncms such as calculating cumulative kWh data from power data with the power to kWh input process, this module can be used to do these kind of processing steps after having recorded base data such as power data for some time. This removes the reliance on setting up everything right in the first instance providing the flexibility to recalculate processed feeds at a later date.
 
-![postprocessor.png](files/postprocessor.png)
+![postprocessor24.png](files/postprocessor24.png)
 
 ### EmonPi, Emonbase install
 
-Install the postprocess module into home folder (e.g. /home/pi) directory (rather than emoncms/Modules):
+Install the postprocess module in /opt/emoncms/modules:
 
-    cd ~/
+    cd /opt/emoncms/modules
     git clone https://github.com/emoncms/postprocess.git
 
-Symlink the web part of the postprocess module into emoncms/Modules, if not using Raspberry Pi replace 'pi' with your home folder name:
+Symlink the web part of the postprocess module into emoncms/Modules:
 
-    ln -s /home/pi/postprocess/postprocess-module /var/www/emoncms/Modules/postprocess
-    
-Use the default settings
+    ln -s /opt/emoncms/modules/postprocess/postprocess-module /var/www/emoncms/Modules/postprocess
 
-    cd ~/postprocess 
-    cp default.postprocess.settings.php postprocess.settings.php 
+The postprocess background script is designed to be ran in the background using service-runner.service.
+This is installed by default on the standard emonSD image build.
 
-Run the background script with:
+Alternatively to run manually:
 
-    sudo php /home/pi/postprocess/postprocess_run.php
+    cd /opt/emoncms/modules/postprocess
+    sudo php postprocess_run.php
