@@ -61,7 +61,7 @@ class PostProcess
         $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, processid, status, status_updated, params ) VALUES (?,?,?,?,?)");
         $stmt->bind_param("iisis", $userid, $processid, $status, $status_updated, $params);
         if ($stmt->execute()) {
-            return $this->add_process_to_queue($params);
+            return $this->trigger_service_runner();
         } else {
             return array('success'=>false,'message'=>'SQL error');
         }
@@ -88,7 +88,7 @@ class PostProcess
                 return array('success'=>false,'message'=>'Process does not exist');
             } else {
                 // return array('success'=>true, 'message'=>'Process updated');
-                return $this->add_process_to_queue($params);
+                return $this->trigger_service_runner();
             }
         } else {
             return array('success'=>false,'message'=>'SQL error');
@@ -142,7 +142,7 @@ class PostProcess
 
     public function get_list($userid) {
         $userid = (int) $userid;
-        $result = $this->mysqli->query("SELECT processid,status,status_updated,params FROM postprocess WHERE userid='$userid'");
+        $result = $this->mysqli->query("SELECT processid,status,status_updated,params FROM postprocess WHERE userid='$userid' ORDER BY processid ASC");
         $processes = array();
         while ($row = $result->fetch_object()) {
             if ($row->params) {
@@ -276,7 +276,7 @@ class PostProcess
         return $service_running;
     }
 
-    public function add_process_to_queue($process) {
+    public function trigger_service_runner() {
         // Check if post_processor is being ran by cron
         if (isset($settings['postprocess']) && isset($settings['postprocess']['cron_enabled'])) {
             if ($settings['postprocess']['cron_enabled']) {
