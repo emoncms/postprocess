@@ -48,18 +48,13 @@ class PostProcess
         if (!isset($params->process_start))
             $params->process_start = 0;
 
-        // Fetch count of processes for this user
-        $result = $this->mysqli->query("SELECT COUNT(*) AS count FROM postprocess WHERE userid='$userid'");
-        $row = $result->fetch_object();
-        $processid = $row->count;
-
         $params = json_encode($params);
         $status = "queued";
         $status_updated = time();
 
         // Insert into using prepared statement
-        $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, processid, status, status_updated, params ) VALUES (?,?,?,?,?)");
-        $stmt->bind_param("iisis", $userid, $processid, $status, $status_updated, $params);
+        $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, status, status_updated, params ) VALUES (?,?,?,?)");
+        $stmt->bind_param("isis", $userid, $status, $status_updated, $params);
         if ($stmt->execute()) {
             return $this->trigger_service_runner();
         } else {
@@ -140,6 +135,7 @@ class PostProcess
         }
     }
 
+    // Return a list of processes for a given user, used for generating the process list in the UI
     public function get_list($userid) {
         $userid = (int) $userid;
         $result = $this->mysqli->query("SELECT processid,status,status_updated,params FROM postprocess WHERE userid='$userid' ORDER BY processid ASC");
@@ -152,9 +148,22 @@ class PostProcess
                 $processes[] = $row;
             }
         }
-        return $processes;
+
+        // validate each process and remove if invalid
+        $valid_processes = array();
+        foreach ($processes as $process) {
+            $result = $this->validate_params($userid,$process->params);
+            if ($result['success']) {
+                $valid_processes[] = $process;
+            } else {
+                $this->remove($userid,$process->processid);
+            }
+        }
+
+        return $valid_processes;
     }
 
+    // Get a single process
     public function get_process($userid,$processid) {
         $userid = (int) $userid;
         $processid = (int) $processid;

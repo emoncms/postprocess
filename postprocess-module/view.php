@@ -7,7 +7,7 @@
 
 <div id="app">
 
-<div class="alert alert-info"><svg class="icon spinner11"><use xlink:href="#icon-spinner11"></use></svg> Process existing PHPFina feed data into new feeds.</div>
+    <div class="alert alert-info"><svg class="icon spinner11"><use xlink:href="#icon-spinner11"></use></svg> Process existing PHPFina feed data into new feeds.</div>
 
     <table class="table table-striped" v-if="process_list.length">
         <tr>
@@ -19,7 +19,7 @@
 
         </tr>
         <tr v-for="(item,index) in process_list">
-            <td>{{item.params.process}}</td>
+            <td :title="'Process ID: '+item.processid">{{item.params.process}}</td>
             <td>
                 <span v-for="(param,key) in processes[item.params.process].settings">
                     <span v-if="param.type=='feed'">
@@ -57,9 +57,9 @@
                 <span v-if="item.status=='finished'" :title="item.status_updated | time_ago" class="label label-success">Finished</span>
                 <span v-if="item.status=='error'" :title="item.status_updated | time_ago" class="label label-danger">Error</span>
             <td>
-                <button class="btn btn-success" @click="run_process(index)">Run</button>
-                <button class="btn btn-info" @click="edit_process(index)">Edit</button>
-                <button class="btn btn-danger" @click="delete_process(index)">Delete</button>
+                <button class="btn btn-success" @click="run_process(item.processid)">Run</button>
+                <button class="btn btn-info" @click="edit_process(item.processid)">Edit</button>
+                <button class="btn btn-danger" @click="delete_process(item.processid)">Delete</button>
             </td>
         </tr>
     </table>
@@ -152,4 +152,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=8"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=10"></script>

@@ -28,6 +28,7 @@ var app = new Vue({
     methods: {
         new_process_selected: function() {
             this.new_process = {};
+            this.new_feed = {};
             for (var key in this.processes[this.new_process_select].settings) {
                 let setting = this.processes[this.new_process_select].settings[key];
                 if (setting.default==undefined) setting.default = "";
@@ -196,14 +197,15 @@ var app = new Vue({
                 }
             });
         },
-        delete_process: function(index) {
+        delete_process: function(processid) {
             if (confirm("Are you sure you want to delete this process?")) {
                 $.ajax({
-                    url: path+"postprocess/remove?processid="+index,
+                    url: path+"postprocess/remove?processid="+processid,
                     dataType: 'json',
                     async: false,
                     success: function(result) {
                         if (result.success) {
+                            var index = app.process_list.findIndex(x => x.processid==processid);
                             app.process_list.splice(index, 1);
                         } else {
                             alert("Error deleting process: "+result.message);
@@ -213,18 +215,30 @@ var app = new Vue({
             }
         },
         edit_process: function(index) {
+
             // load process to new process form
-            app.new_process_select = app.process_list[index].params.process;
-            app.new_process = app.process_list[index].params;
+            let process = this.process_list[index];
+            app.new_process_select = process.params.process;
+            app.new_process = { ... process.params };
             app.new_process_create = true;
             app.mode = 'edit';
-            app.selected_process = index;
-            app.new_process_mode = app.process_list[index].params.process_mode;
-            app.new_process_from = app.process_list[index].params.process_start;
+            app.selected_process = process.processid;
+            app.new_process_mode = process.params.process_mode;
+            app.new_process_from = process.params.process_start;
+
+            // populate new feed form
+            this.new_feed = {};
+            for (var key in this.processes[this.new_process_select].settings) {
+                let setting = this.processes[this.new_process_select].settings[key];
+                if (setting.type=='newfeed') {
+                    this.new_feed[key] = {tag: "postprocess", name: setting.default};
+                }
+            }
+
         },
-        run_process: function(index) {
+        run_process: function(processid) {
             $.ajax({
-                url: path+"postprocess/run?processid="+index,
+                url: path+"postprocess/run?processid="+processid,
                 dataType: 'json',
                 async: true,
                 success: function(result) {

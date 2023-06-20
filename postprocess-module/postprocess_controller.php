@@ -41,31 +41,6 @@ function postprocess_controller()
     if ($route->action == "list" && $session['write']) {
         $route->format = "json";
         return $postprocess->get_list($session['userid']);
-        /*
-        if (!)) {
-            $processlist = array();
-        }
-        $processlist_long = array();
-        $processlist_valid = array();
-        // validate each process in the list
-        for ($i = 0; $i < count($processlist); $i++) {
-            $params = json_decode(json_encode($processlist[$i]));
-            // Check if process exists
-            $valid = true;
-            if (!isset($processes[$params->process])) {
-                $valid = false;
-            }
-            // Check if process parameters are valid
-            $result = $postprocess->validate_params($session['userid'],$params->process,$params);
-            if (!$result['success']) $valid = false;
-            // If valid add to output
-            if ($valid) {
-                $processlist_long[] = $processlist[$i];
-                $processlist_valid[] = $processlist[$i];
-            }
-        }
-        $postprocess->set($session['userid'], $processlist_valid);
-        $result = $processlist_long;*/
     }
 
     if ($route->action == "create" && $session['write']) {
