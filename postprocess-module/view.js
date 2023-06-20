@@ -229,7 +229,10 @@ var app = new Vue({
                 async: true,
                 success: function(result) {
                     if (result.success) {
-                        alert(result.message);
+                        load_process_list();
+                        setTimeout(function() {
+                            alert(result.message);
+                        },10);
                     } else {
                         alert("Error starting process: "+result.message);
                     }
@@ -263,6 +266,9 @@ var app = new Vue({
 
 reload_feeds();
 load_process_list();
+setInterval(function() {
+    load_process_list();
+}, 5000);
 // Load process list using jquery
 function load_process_list() {
     $.ajax({ url: path+"postprocess/list", dataType: "json", async: true, success: function(result) {

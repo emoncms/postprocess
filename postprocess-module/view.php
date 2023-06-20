@@ -152,4 +152,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=7"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=8"></script>
