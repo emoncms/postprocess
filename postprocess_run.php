@@ -7,16 +7,15 @@ if (! flock($fp, LOCK_EX | LOCK_NB)) { echo "Already running\n"; die; }
 list($scriptPath) = get_included_files();
 $basedir = str_replace("/postprocess_run.php","",$scriptPath);
 
+require "common.php";
+require "request.php";
+
 // Load emoncms 
 require "/var/www/emoncms/Lib/load_emoncms.php";
 
 include "Modules/postprocess/postprocess_model.php";
 $postprocess = new PostProcess($mysqli, $redis, $feed);
 $postprocess->datadir = $settings['feed']['phpfina']['datadir'];
-
-chdir($basedir);
-require "common.php";
-require "request.php";
 
 $postprocess->get_processes("$linked_modules_dir/postprocess");
 $process_classes = $postprocess->get_process_classes();
@@ -34,6 +33,8 @@ while (true) {
             } else {
                 print "Success\n";
             }
+            // Update user feeds size
+            $feed->update_user_feeds_size($process->userid);
         } else {
             $postprocess->update_status($process->userid,$process->processid,"error");
             if (isset($result['message'])) {
