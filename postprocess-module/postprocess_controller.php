@@ -7,8 +7,17 @@ function postprocess_controller()
 {
     global $linked_modules_dir, $session, $route, $mysqli, $redis, $settings;
 
-    $result = false;
-    $route->format = "text";
+    // Write access required to use this module
+    if (!$session['write']) {
+        if ($route->format=='html') {
+            // Empty response returns to login
+            return ''; 
+        } else {
+            return array("succes"=>false, "message"=>"Invalid permission");
+        }
+    }
+
+    // If we are at this point the user has write access level
 
     $log = new EmonLogger(__FILE__);
 
@@ -21,54 +30,46 @@ function postprocess_controller()
     // Load available processes descriptions
     $processes = $postprocess->get_processes("$linked_modules_dir/postprocess");
 
-    // -------------------------------------------------------------------------
     // VIEW
-    // -------------------------------------------------------------------------
-    if ($route->action == "" && $session['write']) {
-        $result = view("Modules/postprocess/view.php", array("processes" => $processes));
-        $route->format = "html";
-        return array('content' => $result);
+    $route->format = "html";
+
+    if ($route->action == "") {
+        return view("Modules/postprocess/view.php", array("processes" => $processes));
     }
 
-    if ($route->action == "processes" && $session['write']) {
-        $route->format = "json";
-        return array('content' => $processes);
-    }
+    // JSON API
+    $route->format = "json";
 
-    // -------------------------------------------------------------------------
-    // PROCESS LIST
-    // -------------------------------------------------------------------------
-    if ($route->action == "list" && $session['write']) {
-        $route->format = "json";
+    if ($route->action == "processes") return $processes;
+    
+    if ($route->action == "list") {
         return $postprocess->get_list($session['userid']);
     }
 
-    if ($route->action == "create" && $session['write']) {
-        $route->format = "json";
+    if ($route->action == "create") {
         $params = json_decode(file_get_contents('php://input'));
         return $postprocess->add($session['userid'], $params);
     }
 
-    if ($route->action == 'edit' && $session['write']) {
-        $route->format = "json";
+    if ($route->action == 'edit') {
         $processid = (int) get('processid', true);       
         $params = json_decode(file_get_contents('php://input'));
         return $postprocess->update($session['userid'], $processid, $params);
     }
 
-    if ($route->action == "run" && $session['write']) {
-        $route->format = "json";
+    if ($route->action == "run") {
         $processid = (int) get('processid', true);
         return $postprocess->update_status($session['userid'], $processid, "queued");
     }
 
-    if ($route->action == "remove" && $session['write']) {
-        $route->format = "json";
+    if ($route->action == "remove") {
         $processid = (int) get('processid', true);
         return $postprocess->remove($session['userid'], $processid);
     }
 
+    // Plain/text API
     if ($route->action == 'logpath' && $session['admin']) {
+        $route->format = "text";
         return $settings['log']['location'] . "/postprocess.log";
     }
 
@@ -78,9 +79,8 @@ function postprocess_controller()
         if (file_exists($log_filename)) {
             ob_start();
             passthru("tail -30 $log_filename");
-            $result = trim(ob_get_clean());
-        } else $result = "no logging yet available";
+            return trim(ob_get_clean());
+        } else return "no logging yet available";
     }
-
-    return array('content' => $result, 'fullwidth' => false);
+    return EMPTY_ROUTE;
 }
