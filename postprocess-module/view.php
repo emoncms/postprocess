@@ -58,7 +58,7 @@
                 <span v-if="item.status=='error'" :title="item.status_updated | time_ago" class="label label-danger">Error</span>
             <td>
                 <button class="btn btn-success" @click="run_process(item.processid)">Run</button>
-                <button class="btn btn-info" @click="edit_process(item.processid)">Edit</button>
+                <button class="btn btn-info" @click="edit_process(index)">Edit</button>
                 <button class="btn btn-danger" @click="delete_process(item.processid)">Delete</button>
             </td>
         </tr>
@@ -152,4 +152,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=10"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=11"></script>

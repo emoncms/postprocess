@@ -218,6 +218,7 @@ var app = new Vue({
 
             // load process to new process form
             let process = this.process_list[index];
+            console.log(process)
             app.new_process_select = process.params.process;
             app.new_process = { ... process.params };
             app.new_process_create = true;
