@@ -7,6 +7,7 @@ class PostProcess_offsetfeed extends PostProcess_common
             "name"=>"offsetfeed",
             "group"=>"Calibration",
             "description"=>"Offset a feed by a constant value",
+            "order"=>2,
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to apply offset:"),
                 "offset"=>array("type"=>"value", "short"=>"Offset by:"),

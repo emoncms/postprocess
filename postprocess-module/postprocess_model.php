@@ -198,14 +198,25 @@ class PostProcess
                     if (method_exists($process,"description")) {
                         $process_description = $process->description();
                         if (isset($process_description['settings'])) {
-                            $processes[$process_name] = $process_description;
+                            $process_description['name'] = $process_name;
+                            if (!isset($process_description['order'])) {
+                                $process_description['order'] = 99;
+                            } 
+                            $processes[] = $process_description;
                         }
                     }
                 }
             }
         }
-        $this->processes = $processes;
-        return $processes;
+
+        usort($processes, fn($a, $b) => $a['order'] <=> $b['order']);
+        $ordered_processes = array();
+        foreach ($processes as $process) {
+            $ordered_processes[$process['name']] = $process;
+        }
+
+        $this->processes = $ordered_processes;
+        return $ordered_processes;
     }
 
     public function get_process_classes() {

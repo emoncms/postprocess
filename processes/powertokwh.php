@@ -5,8 +5,9 @@ class PostProcess_powertokwh extends PostProcess_common
     public function description() {
         return array(
             "name"=>"powertokwh",
-            "group"=>"Main",
+            "group"=>"Power & Energy",
             "description"=>"Convert power feed to kWh feed",
+            "order"=>3,
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
                 "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:"),

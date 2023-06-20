@@ -7,6 +7,7 @@ class PostProcess_scalefeed extends PostProcess_common
             "name"=>"scalefeed",
             "group"=>"Calibration",
             "description"=>"Scale a feed",
+            "order"=>1,
             "settings"=>array(
                 "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed to scale:"),
                 "scale"=>array("type"=>"value", "short"=>"Scale by:"),
