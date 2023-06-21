@@ -17,7 +17,7 @@ var app = new Vue({
         new_process_select: 'none',
         new_process: {},
         new_feed: {},
-        new_process_mode: 'recent',
+        new_process_mode: 'all',
         new_process_start: 0,
         new_process_create: false,
         mode: 'create',

@@ -4,13 +4,13 @@ class PostProcess_powertokwh extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"powertokwh",
+            "name"=>"Power to kWh",
             "group"=>"Power & Energy",
-            "description"=>"Convert power feed to kWh feed",
+            "description"=>"Create a cumulative kWh feed from a power feed",
             "order"=>3,
             "settings"=>array(
-                "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input feed:"),
-                "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name:"),
+                "input"=>array("type"=>"feed", "engine"=>5, "short"=>"Select input power feed (W):"),
+                "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Create or select output kWh feed:"),
                 "max_power"=>array("type"=>"value", "default"=>1000000, "short"=>"Enter max power limit (W):"),
                 "min_power"=>array("type"=>"value", "default"=>-1000000, "short"=>"Enter min power limit (W):")
             )

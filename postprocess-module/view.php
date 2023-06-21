@@ -19,7 +19,7 @@
 
         </tr>
         <tr v-for="(item,index) in process_list">
-            <td :title="'Process ID: '+item.processid">{{item.params.process}}</td>
+            <td :title="'Process ID: '+item.processid">{{processes[item.params.process].name}}</td>
             <td>
                 <span v-for="(param,key) in processes[item.params.process].settings">
                     <span v-if="param.type=='feed'">
@@ -75,11 +75,16 @@
         <select v-model="new_process_select" @change="new_process_selected">
             <option value="none">SELECT PROCESS:</option>
             <optgroup v-for="(group,groupname) in processes_by_group" v-bind:label="groupname">
-                <option v-for="(item,index) in group" >{{index}}</option>
+                <option v-for="(item,key) in group" :value="key">{{item.name}}</option>
             </optgroup>
         </select>
 
         <div v-if="processes[new_process_select]!=undefined">
+
+            <div class="alert alert-info" style="margin-bottom:15px">
+                <span v-html="processes[new_process_select].description"></span>
+            </div>
+
             <span v-for="(param,key) in processes[new_process_select].settings">
                 <div v-if="param.type=='feed' || param.type=='newfeed'">
                     <b>{{param.short}}</b><br>
@@ -129,7 +134,7 @@
                 <span class="add-on">Process:</span>
                 <select v-model="new_process_mode" @change="new_process_update" style="width:150px">
                     <option value="all">from the start</option>
-                    <option value="from">from timestamp</option>
+                    <!--<option value="from">from timestamp</option>-->
                     <option value="recent">recent only</option>
                 </select>
                 <input type="text" v-model="new_process_start" @change="new_process_update" v-if="new_process_mode=='from'" placeholder="timestamp" style="width:100px">
@@ -152,4 +157,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=11"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=12"></script>

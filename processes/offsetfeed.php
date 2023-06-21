@@ -4,7 +4,7 @@ class PostProcess_offsetfeed extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"offsetfeed",
+            "name"=>"Offset feed",
             "group"=>"Calibration",
             "description"=>"Offset a feed by a constant value",
             "order"=>2,

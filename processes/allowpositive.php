@@ -4,7 +4,7 @@ class PostProcess_allowpositive extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"allowpositive",
+            "name"=>"Allow positive",
             "group"=>"Limits",
             "description"=>"Allow only positive values",
             "order"=>4,

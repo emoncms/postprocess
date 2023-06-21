@@ -4,9 +4,9 @@ class PostProcess_removenan extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"removenan",
+            "name"=>"Remove missing values",
             "group"=>"Data cleanup",
-            "description"=>"Remove NaN values from a feed",
+            "description"=>"Remove missing data points from a feed by interpolating between values",
             "settings"=>array(
                 "feedid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select feed to remove nan values:"),
             )

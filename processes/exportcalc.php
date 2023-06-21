@@ -4,9 +4,9 @@ class PostProcess_exportcalc extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"exportcalc",
+            "name"=>"Export calculation",
             "group"=>"Solar",
-            "description"=>"Export a calculation",
+            "description"=>"Calculate grid export from consumption and generation",
             "settings"=>array(
                 "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
                 "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
@@ -58,7 +58,7 @@ class PostProcess_exportcalc extends PostProcess_common
         if ($gen_end_time<$end_time) $end_time = $gen_end_time;
 
         if ($start_time>=$end_time) {
-            return array("success"=>false, "message"=>"no new data to process");
+            return array("success"=>true, "message"=>"no new data to process");
         }
         
         // Open input and output feeds

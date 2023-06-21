@@ -4,7 +4,7 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
 {       
     public function description() {
         return array(
-            "name"=>"constantflow_tokwh",
+            "name"=>"Constant flow to kWh",
             "group"=>"Misc",
             "description"=>"Convert constant flow to kwh",
             "settings"=>array(

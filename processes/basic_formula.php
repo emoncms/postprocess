@@ -16,11 +16,11 @@ class PostProcess_basic_formula extends PostProcess_common
         <font color=green>check you feeds numbers before</font><br>";
 
         return array(
-            "name"=>"basic_formula",
+            "name"=>"Basic Formula",
             "group"=>"Formula",
-            "description"=>"Basic formula",
+            "description"=>$bfdescription,
             "settings"=>array(
-                "formula"=>array("type"=>"formula", "short"=>$bfdescription, "engine"=>5),
+                "formula"=>array("type"=>"formula", "short"=>"Enter formula", "engine"=>5),
                 "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter output feed name :")
             )
         );

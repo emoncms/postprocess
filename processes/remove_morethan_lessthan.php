@@ -6,7 +6,7 @@ class PostProcess_remove_morethan_lessthan extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"remove_morethan_lessthan",
+            "name"=>"Remove more than/less than",
             "group"=>"Limits",
             "description"=>"Remove values more than or less than a certain value",
             "settings"=>array(

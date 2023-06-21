@@ -4,7 +4,7 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"liquidorairflow_tokwh",
+            "name"=>"Liquid or airflow to kWh",
             "group"=>"Misc",
             "description"=>"Convert liquid or airflow to kwh",
             "settings"=>array(

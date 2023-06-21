@@ -4,9 +4,9 @@ class PostProcess_solardirectcalc extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"solardirectcalc",
+            "name"=>"Solar direct calculation",
             "group"=>"Solar",
-            "description"=>"Calculate direct use of solar",
+            "description"=>"Calculate direct use of solar from consumption and generation feeds",
             "settings"=>array(
                 "use"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
                 "gen"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
@@ -58,7 +58,7 @@ class PostProcess_solardirectcalc extends PostProcess_common
         if ($gen_end_time<$end_time) $end_time = $gen_end_time;
 
         if ($start_time>=$end_time) {
-            return array("success"=>false, "message"=>"no new data to process");
+            return array("success"=>true, "message"=>"no new data to process");
         }
         
         // Open input and output feeds

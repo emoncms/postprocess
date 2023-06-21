@@ -11,7 +11,7 @@ class PostProcess_average extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"average",
+            "name"=>"Average",
             "group"=>"Feeds",
             "description"=>"Average a feed",
             "settings"=>array(

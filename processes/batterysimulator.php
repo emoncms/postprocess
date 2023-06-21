@@ -11,7 +11,7 @@ class PostProcess_batterysimulator extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"batterysimulator",
+            "name"=>"Battery simulator",
             "group"=>"Simulation",
             "description"=>"Basic solar battery simulator",
             "settings"=>array(

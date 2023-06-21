@@ -4,7 +4,7 @@ class PostProcess_allownegative extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"allownegative",
+            "name"=>"Allow negative",
             "group"=>"Limits",
             "description"=>"Allow only negative values",
             "order"=>5,

@@ -4,7 +4,7 @@ class PostProcess_importcalc extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"importcalc",
+            "name"=>"Import calculation",
             "group"=>"Solar",
             "description"=>"Calculate grid import from consumption and generation",
             "settings"=>array(
@@ -58,7 +58,7 @@ class PostProcess_importcalc extends PostProcess_common
         if ($gen_end_time<$end_time) $end_time = $gen_end_time;
 
         if ($start_time>=$end_time) {
-            return array("success"=>false, "message"=>"no new data to process");
+            return array("success"=>true, "message"=>"no new data to process");
         }
         
         // Open input and output feeds

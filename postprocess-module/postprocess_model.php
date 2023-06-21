@@ -188,17 +188,21 @@ class PostProcess
                 $filename = $files[$i];
                 require_once($dir."/".$filename);
 
-                $process_name = str_replace(".php","",$filename);
+                $process_key = str_replace(".php","",$filename);
 
-                if (class_exists("PostProcess_".$process_name)) {
-                    $process_class = "PostProcess_".$process_name;
+                if (class_exists("PostProcess_".$process_key)) {
+                    $process_class = "PostProcess_".$process_key;
                     $process = new $process_class($this->datadir);
-                    $this->process_classes[$process_name] = $process;
+                    $this->process_classes[$process_key] = $process;
 
                     if (method_exists($process,"description")) {
                         $process_description = $process->description();
                         if (isset($process_description['settings'])) {
-                            $process_description['name'] = $process_name;
+                            $process_description['key'] = $process_key;
+
+                            if (!isset($process_description['name'])) {
+                                $process_description['name'] = $process_key;
+                            }
                             if (!isset($process_description['order'])) {
                                 $process_description['order'] = 99;
                             } 
@@ -212,7 +216,7 @@ class PostProcess
         usort($processes, fn($a, $b) => $a['order'] <=> $b['order']);
         $ordered_processes = array();
         foreach ($processes as $process) {
-            $ordered_processes[$process['name']] = $process;
+            $ordered_processes[$process['key']] = $process;
         }
 
         $this->processes = $ordered_processes;

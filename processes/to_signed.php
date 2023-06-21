@@ -4,7 +4,7 @@ class PostProcess_to_signed extends PostProcess_common
 {
     public function description() {
         return array(
-            "name"=>"to_signed",
+            "name"=>"To signed",
             "group"=>"Misc",
             "description"=>"Convert unsigned int to signed int",
             "settings"=>array(
