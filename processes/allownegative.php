@@ -80,17 +80,16 @@ class PostProcess_allownegative extends PostProcess_common
             $buffer .= pack("f",$value);
         }
         
-        fwrite($of,$buffer);
-        
-        print "bytes written: ".strlen($buffer)."\n";
+        fwrite($of,$buffer);        
         fclose($of);
         fclose($if);
         
         $time = $input_meta->start_time + ($input_meta->npoints * $input_meta->interval);
         
-        print "last time value: ".$time." ".$value."\n";
-        updatetimevalue($params->output,$time,$value);
-        
-        return array("success"=>true);
+        $byteswritten = strlen($buffer);
+        if ($byteswritten>0) {
+            updatetimevalue($params->output,$time,$value);
+        }
+        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$time." ".$value);
     }
 }

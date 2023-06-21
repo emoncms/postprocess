@@ -93,7 +93,6 @@ class PostProcess_downsample extends PostProcess_common
         fclose($output_fh);
 
         $byteswritten = strlen($buffer);
-        print "bytes written: " . $byteswritten . "\n";
 
         createmeta($dir, $feed, $output_meta);
 
@@ -105,6 +104,6 @@ class PostProcess_downsample extends PostProcess_common
                 updatetimevalue($feed, $time, $mean);
             }
         }
-        return array("success" => true);
+        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$time." ".$mean);
     }
 }

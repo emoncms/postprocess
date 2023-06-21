@@ -62,7 +62,7 @@ class PostProcess_basic_formula extends PostProcess_common
 
         //checking the output feed
         $out=$processitem->output;
-        if(!$out_meta = getmeta($dir,$out)) return false;
+        if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
         if (!$out_fh = @fopen($dir.$out.".dat", 'ab')) {
             return array("success"=>false, "message"=>"could not open $dir $out.dat");
         }
@@ -157,7 +157,7 @@ class PostProcess_basic_formula extends PostProcess_common
 
         //we retrieve the meta and open the dat files
         foreach ($feed_ids as $id){
-            if(!$meta = getmeta($dir,$id)) return false;
+            if(!$meta = getmeta($dir,$id)) return array("success"=>false, "message"=>"could not get meta for $id");
             $feeds_meta[$id]=$meta;
             if (!$fh = @fopen($dir.$id.".dat", 'rb')) {
                 return array("success"=>false, "message"=>"could not open $dir $id.dat");
@@ -226,6 +226,6 @@ class PostProcess_basic_formula extends PostProcess_common
         fclose($out_fh);
         print("last time value: $time / $sum \n");
         updatetimevalue($out,$time,$sum);
-        return array("success"=>true);
+        return array("success"=>true, "message"=>"bytes written: ".$written_bytes.", last time value: ".$time." ".$sum);
     }
 }

@@ -102,17 +102,14 @@ class PostProcess_solardirectcalc extends PostProcess_common
         }
         
         fwrite($out_fh,$buffer);
-        
-        $byteswritten = strlen($buffer);
-        print "bytes written: ".$byteswritten."\n";
         fclose($out_fh);
         fclose($use_fh);
         fclose($gen_fh);
         
+        $byteswritten = strlen($buffer);
         if ($byteswritten>0) {
-            print "last time value: ".$time." ".$directval."\n";
-            updatetimevalue($params->out,$time,$directval);
+            updatetimevalue($params->output,$time,$directval);
         }
-        return array("success"=>true);
+        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$time." ".$directval);
     }
 }

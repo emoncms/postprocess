@@ -30,9 +30,9 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
         $text = $processitem->text;
         $out = $processitem->output;
 
-        if (!$tint_meta = getmeta($dir,$tint)) return false;
-        if (!$text_meta = getmeta($dir,$text)) return false;
-        if (!$out_meta = getmeta($dir,$out)) return false;
+        if (!$tint_meta = getmeta($dir,$tint)) array("success"=>false, "message"=>"could not open input feed");
+        if (!$text_meta = getmeta($dir,$text)) array("success"=>false, "message"=>"could not open input feed");
+        if (!$out_meta = getmeta($dir,$out)) array("success"=>false, "message"=>"could not open output feed");
 
         if (!$tint_fh = @fopen($dir.$tint.".dat", 'rb')) {
             return array("success"=>false, "message"=>"could not open input feed");
@@ -118,7 +118,10 @@ class PostProcess_constantflow_tokwh extends PostProcess_common
         fclose($text_fh);
         fclose($out_fh);
         print("last time value: $time / $kwh \n");
-        updatetimevalue($out,$time,$kwh);
-        return array("success"=>true);
+        
+        if ($written_bytes>0) {
+            updatetimevalue($out,$time,$kwh);
+        }
+        return array("success"=>true, "message"=>"bytes written: ".$written_bytes.", last time value: ".$time." ".$kwh);
     }
 }

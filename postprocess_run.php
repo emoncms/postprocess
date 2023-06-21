@@ -26,22 +26,13 @@ while (true) {
 
         $result = $process_classes[$process->params->process]->process($process->params);
         
-        if ($result['success'] || !isset($result['success'])) {
-            $postprocess->update_status($process->userid,$process->processid,"finished");
-            if (isset($result['message'])) {
-                print "Success ".$result['message']."\n";
-            } else {
-                print "Success\n";
-            }
-            // Update user feeds size
+        if ($result['success']) {
+            print "Success: ".$result['message']."\n";
+            $postprocess->update_status($process->userid,$process->processid,"finished",$result['message']);
             $feed->update_user_feeds_size($process->userid);
         } else {
-            $postprocess->update_status($process->userid,$process->processid,"error");
-            if (isset($result['message'])) {
-                print "Error ".$result['message']."\n";
-            } else {
-                print "Error\n";
-            }
+            $postprocess->update_status($process->userid,$process->processid,"error",$result['message']);
+            print "Error: ".$result['message']."\n";
         }
     } else {
         break;

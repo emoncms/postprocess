@@ -101,17 +101,14 @@ class PostProcess_mergefeeds extends PostProcess_common
         }
         
         fwrite($out_fh,$buffer);
-        
-        $byteswritten = strlen($buffer);
-        print "bytes written: ".$byteswritten."\n";
         fclose($out_fh);
         fclose($feedA_fh);
         fclose($feedB_fh);
         
+        $byteswritten = strlen($buffer);
         if ($byteswritten>0) {
-            print "last time value: ".$time." ".$outval."\n";
             updatetimevalue($params->output,$time,$outval);
         }
-        return array("success"=>true);
+        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$time." ".$outval);
     }
 }

@@ -52,10 +52,10 @@
                 <span v-if="item.params.process_mode=='from'">Process from {{ item.process_start }}</span>
             </td>
             <td>
-                <span v-if="item.status=='queued'" :title="item.status_updated | time_ago" class="label label-info">Queued</span>
-                <span v-if="item.status=='running'" :title="item.status_updated | time_ago" class="label label-warning">Running</span>
-                <span v-if="item.status=='finished'" :title="item.status_updated | time_ago" class="label label-success">Finished</span>
-                <span v-if="item.status=='error'" :title="item.status_updated | time_ago" class="label label-danger">Error</span>
+                <span v-if="item.status=='queued'" :title="time_ago(item.status_updated)" class="label label-info">Queued</span>
+                <span v-if="item.status=='running'" :title="time_ago(item.status_updated)" class="label label-warning">Running</span>
+                <span v-if="item.status=='finished'" :title="time_ago(item.status_updated)+'\n\n'+item.status_message" class="label label-success">Finished</span>
+                <span v-if="item.status=='error'" :title="time_ago(item.status_updated)" class="label label-danger">Error: {{ item.status_message }}</span>
             <td>
                 <button class="btn btn-success" @click="run_process(item.processid)">Run</button>
                 <button class="btn btn-info" @click="edit_process(index)">Edit</button>
@@ -157,4 +157,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=12"></script>
+<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=13"></script>

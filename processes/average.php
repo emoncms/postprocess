@@ -106,15 +106,13 @@ class PostProcess_average extends PostProcess_common
             }
         }
         fclose($if);
-        
-
         fwrite($of,$buffer);
         fclose($of);
-        print "bytes written: ".strlen($buffer)."\n";
-        
-        print "last time value: ".$last_av_time." ".$average."\n";
-        // updatetimevalue($output,$last_av_time,$average);
-        
-        return array("success"=>true);
+
+        $byteswritten = strlen($buffer);
+        if ($byteswritten>0) {
+            updatetimevalue($output,$last_av_time,$average);
+        }
+        return array("success"=>true, "message"=>"bytes written: ".strlen($buffer).", last time value: ".$last_av_time." ".$average);
     }
 }

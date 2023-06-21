@@ -5,5 +5,6 @@ $schema['postprocess'] = array(
     'userid' => array('type' => 'int(11)'),
     'status' => array('type' => 'varchar(255)'),
     'status_updated' => array('type' => 'int(11)'),
+    'status_message' => array('type' => 'varchar(255)'),
     'params' => array('type' => 'text')
 );

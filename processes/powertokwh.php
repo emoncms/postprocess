@@ -97,16 +97,16 @@ class PostProcess_powertokwh extends PostProcess_common
             print "Filtered count: $filtered_count\n";
         }
         
-        print "bytes written: ".strlen($buffer)."\n";
         fclose($of);
         fclose($if);
         
         $time = $input_meta->start_time + ($input_meta->npoints * $input_meta->interval);
         $value = $wh * 0.001;
         
-        print "last time value: ".$time." ".$value."\n";
-        updatetimevalue($params->output,$time,$value);
-        
-        return array("success"=>true);
+        $byteswritten = strlen($buffer);
+        if ($byteswritten>0) {
+            updatetimevalue($params->output,$time,$value);
+        }
+        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$time." ".$value);
     }
 }

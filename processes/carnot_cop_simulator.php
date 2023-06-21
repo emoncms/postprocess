@@ -42,15 +42,15 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
         
         $model = new ModelHelper($dir,$p);
         
-        if (!$model->input('heatpump_elec')) return false;
-        if (!$model->input('heatpump_flowT')) return false;
-        if (!$model->input('heatpump_returnT')) return false;
-        if (!$model->input('heatpump_outsideT')) return false;
+        if (!$model->input('heatpump_elec')) return array("success"=>false,"message"=>"Could not open input feed: heatpump_elec");
+        if (!$model->input('heatpump_flowT')) return array("success"=>false,"message"=>"Could not open input feed: heatpump_flowT");
+        if (!$model->input('heatpump_returnT')) return array("success"=>false,"message"=>"Could not open input feed: heatpump_returnT");
+        if (!$model->input('heatpump_outsideT')) return array("success"=>false,"message"=>"Could not open input feed: heatpump_outsideT");
         
-        if (!$model->output('heatpump_cop_sim')) return false;
-        if (!$model->output('heatpump_heat_sim')) return false;
-        if (!$model->output('heatpump_heat_sim_kwh')) return false;
-        if (!$model->output('heatpump_flowrate_sim')) return false;
+        if (!$model->output('heatpump_cop_sim')) return array("success"=>false,"message"=>"Could not open output feed: heatpump_cop_sim");
+        if (!$model->output('heatpump_heat_sim')) return array("success"=>false,"message"=>"Could not open output feed: heatpump_heat_sim");
+        if (!$model->output('heatpump_heat_sim_kwh')) return array("success"=>false,"message"=>"Could not open output feed: heatpump_heat_sim_kwh");
+        if (!$model->output('heatpump_flowrate_sim')) return array("success"=>false,"message"=>"Could not open output feed: heatpump_flowrate_sim");
         
         // Work out output data interval and start_time 
         $interval = $model->meta['heatpump_elec']->interval;
@@ -130,8 +130,6 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
         echo "\n";
         
         $buffersize = $model->save_all();
-        print "buffer size: ".($buffersize/1024)." kb\n";
-        
-        return array("success"=>true);
+        return array("success"=>true, "message"=>"bytes written: ".($buffersize/1024)." kb");
     }
 }

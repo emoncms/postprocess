@@ -258,9 +258,8 @@ var app = new Vue({
             if (this.formula_feed_finder_id!='none' && !isNaN(this.formula_feed_finder_id)) {
                 this.new_process['formula'] += "f"+this.formula_feed_finder_id;
             }
-        }
-    },
-    filters: {
+        },
+
         time_ago: function (value) {
             var date = new Date();
             var time = date.getTime()*0.001;

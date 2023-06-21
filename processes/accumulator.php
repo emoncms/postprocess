@@ -95,16 +95,16 @@ class PostProcess_accumulator extends PostProcess_common
         if ($filtered_count>0) {
             print "Filtered count: $filtered_count\n";
         }
-        
-        print "bytes written: ".strlen($buffer)."\n";
         fclose($of);
         fclose($if);
         
         $time = $input_meta->start_time + ($input_meta->npoints * $input_meta->interval);
         
-        print "last time value: ".$time." ".$total."\n";
-        updatetimevalue($params->output,$time,$total);
-        
-        return array("success"=>true);
+        $byteswritten = strlen($buffer);
+        if ($byteswritten>0) {
+            updatetimevalue($params->output,$time,$total);
+        }
+        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$time." ".$total);
+
     }
 }

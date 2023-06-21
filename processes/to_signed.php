@@ -61,9 +61,8 @@ class PostProcess_to_signed extends PostProcess_common
         fclose($fh);
         
         echo "\n";
-        
-        echo "to_signed: ".$dp_modified." datapoints, ".round(($dp_modified/$npoints)*100)."%\n";
+    
         echo "time: ".(microtime(true)-$stime)."\n";
-        return array("success"=>true);
+        return array("success" => true, "message"=>"to_signed: ".$dp_modified." datapoints, ".round(($dp_modified/$npoints)*100)."%\n");
     }
 }

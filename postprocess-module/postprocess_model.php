@@ -51,10 +51,11 @@ class PostProcess
         $params = json_encode($params);
         $status = "queued";
         $status_updated = time();
+        $status_message = "";
 
         // Insert into using prepared statement
-        $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, status, status_updated, params ) VALUES (?,?,?,?)");
-        $stmt->bind_param("isis", $userid, $status, $status_updated, $params);
+        $stmt = $this->mysqli->prepare("INSERT INTO postprocess ( userid, status, status_updated, status_message, params ) VALUES (?,?,?,?,?)");
+        $stmt->bind_param("isiss", $userid, $status, $status_updated, $status_message, $params);
         if ($stmt->execute()) {
             return $this->trigger_service_runner();
         } else {
@@ -73,9 +74,10 @@ class PostProcess
         $params = json_encode($params);
         $status = "queued";
         $status_updated = time();
+        $status_message = "";
 
-        $stmt = $this->mysqli->prepare("UPDATE postprocess SET params=?, status=?, status_updated=? WHERE userid=? AND processid=?");
-        $stmt->bind_param("ssiii", $params, $status, $status_updated, $userid, $processid);
+        $stmt = $this->mysqli->prepare("UPDATE postprocess SET params=?, status=?, status_updated=?, status_message=? WHERE userid=? AND processid=?");
+        $stmt->bind_param("ssisii", $params, $status, $status_updated, $status_message, $userid, $processid);
         if ($stmt->execute()) {
             $affected_rows = $stmt->affected_rows;
             $stmt->close();
@@ -90,20 +92,24 @@ class PostProcess
         }
     }
 
-    public function update_status($userid,$processid,$status)
+    public function update_status($userid,$processid,$status,$status_message="")
     {
         $userid = (int) $userid;
         $processid = (int) $processid;
         $status = preg_replace("/[^a-zA-Z0-9]+/", "", $status);
+        $status_message = preg_replace("/[^a-zA-Z0-9\s_\-.,:;]+/", "", $status_message);
+        
         $status_updated = time();
 
-        // Only update if status is different
-        $result = $this->mysqli->query("SELECT status FROM postprocess WHERE userid='$userid' AND processid='$processid'");
+        // Only update if status or status_message is different
+        $result = $this->mysqli->query("SELECT status, status_message FROM postprocess WHERE userid='$userid' AND processid='$processid'");
         $row = $result->fetch_object();
-        if ($row->status==$status) return array('success'=>true, 'message'=>'Process status updated');
+        if ($row->status==$status && $row->status_message==$status_message) {
+            return array('success'=>true, 'message'=>'Process status updated');
+        }
 
-        $stmt = $this->mysqli->prepare("UPDATE postprocess SET status=?, status_updated=? WHERE userid=? AND processid=?");
-        $stmt->bind_param("siii", $status, $status_updated, $userid, $processid);
+        $stmt = $this->mysqli->prepare("UPDATE postprocess SET status=?, status_updated=?, status_message=? WHERE userid=? AND processid=?");
+        $stmt->bind_param("sisii", $status, $status_updated, $status_message, $userid, $processid);
         if ($stmt->execute()) {
             $affected_rows = $stmt->affected_rows;
             $stmt->close();
@@ -138,7 +144,7 @@ class PostProcess
     // Return a list of processes for a given user, used for generating the process list in the UI
     public function get_list($userid) {
         $userid = (int) $userid;
-        $result = $this->mysqli->query("SELECT processid,status,status_updated,params FROM postprocess WHERE userid='$userid' ORDER BY processid ASC");
+        $result = $this->mysqli->query("SELECT processid,status,status_updated,status_message,params FROM postprocess WHERE userid='$userid' ORDER BY processid ASC");
         $processes = array();
         while ($row = $result->fetch_object()) {
             if ($row->params) {

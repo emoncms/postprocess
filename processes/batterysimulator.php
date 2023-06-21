@@ -54,27 +54,25 @@ class PostProcess_batterysimulator extends PostProcess_common
 
         // Timezone for solar forecast and battery offpeak charging
         if (!$datetimezone = new DateTimeZone($p->timezone)) {
-            echo "Invalid timezone ".$p->timezone."\n";
-            return false;
+            return array("success"=>false,"message"=>"Invalid timezone ".$p->timezone);
         }
         $date = new DateTime();
         $date->setTimezone($datetimezone);
         
         $model = new ModelHelper($dir,$p);
-        if (!$model->input('solar')) return false;
-        if (!$model->input('consumption')) return false;
-        if (!$model->output('charge')) return false;
-        if (!$model->output('discharge')) return false;
-        if (!$model->output('soc')) return false;
-        if (!$model->output('import')) return false;
-        if (!$model->output('charge_kwh')) return false;
-        if (!$model->output('discharge_kwh')) return false;
-        if (!$model->output('import_kwh')) return false;
-        if (!$model->output('solar_direct_kwh')) return false;
+        if (!$model->input('solar')) return array("success"=>false,"message"=>"Could not open solar feed");
+        if (!$model->input('consumption')) return array("success"=>false,"message"=>"Could not open consumption feed");
+        if (!$model->output('charge')) return array("success"=>false,"message"=>"Could not open charge feed");
+        if (!$model->output('discharge')) return array("success"=>false,"message"=>"Could not open discharge feed");
+        if (!$model->output('soc')) return array("success"=>false,"message"=>"Could not open soc feed");
+        if (!$model->output('import')) return array("success"=>false,"message"=>"Could not open import feed");
+        if (!$model->output('charge_kwh')) return array("success"=>false,"message"=>"Could not open charge_kwh feed");
+        if (!$model->output('discharge_kwh')) return array("success"=>false,"message"=>"Could not open discharge_kwh feed");
+        if (!$model->output('import_kwh')) return array("success"=>false,"message"=>"Could not open import_kwh feed");
+        if (!$model->output('solar_direct_kwh')) return array("success"=>false,"message"=>"Could not open solar_direct_kwh feed");
         
         // Check that intervals are the same
         if ($model->meta['solar']->interval != $model->meta['consumption']->interval) {
-            print "ERROR: interval of feeds do not match\n";
             return array("success"=>false,"message"=>"interval of feeds do not match");
         }
 
@@ -218,8 +216,6 @@ class PostProcess_batterysimulator extends PostProcess_common
         echo "\n";
         
         $buffersize = $model->save_all();
-        print "buffer size: ".($buffersize/1024)." kb\n";
-        
-        return array("success"=>true);
+        return array("success"=>true, "message"=>"bytes written: ".($buffersize/1024)." kb");
     }
 }

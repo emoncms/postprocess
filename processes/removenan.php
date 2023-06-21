@@ -71,11 +71,7 @@ class PostProcess_removenan extends PostProcess_common
             $fpos += $count;
         }
         fclose($fh);
-        
-        echo "\n";
-        
-        echo "nanfix: ".$nanfix." datapoints, ".round(($nanfix/$npoints)*100)."%\n";
         echo "time: ".(microtime(true)-$stime)."\n";
-        return array("success"=>true);
+        return array("success" => true, "message"=>"nanfix: ".$nanfix." datapoints, ".round(($nanfix/$npoints)*100)."%\n");
     }
 }

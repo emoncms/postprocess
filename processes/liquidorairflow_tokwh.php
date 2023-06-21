@@ -30,29 +30,29 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
         $text = $processitem->text;
         $out = $processitem->output;
 
-        if (!$flow_meta = getmeta($dir,$flow)) return false;
-        if (!$tint_meta = getmeta($dir,$tint)) return false;
-        if (!$text_meta = getmeta($dir,$text)) return false;
-        if (!$out_meta = getmeta($dir,$out)) return false;
+        if (!$flow_meta = getmeta($dir,$flow)) return array("success"=>false, "message"=>"could not open input feed");
+        if (!$tint_meta = getmeta($dir,$tint)) return array("success"=>false, "message"=>"could not open input feed");
+        if (!$text_meta = getmeta($dir,$text)) return array("success"=>false, "message"=>"could not open input feed");
+        if (!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not open output feed");
 
         if (!$flow_fh = @fopen($dir.$flow.".dat", 'rb')) {
             echo "ERROR: could not open $dir $flow.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
 
         if (!$tint_fh = @fopen($dir.$tint.".dat", 'rb')) {
             echo "ERROR: could not open $dir $tint.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
 
         if (!$text_fh = @fopen($dir.$text.".dat", 'rb')) {
             echo "ERROR: could not open $dir $text.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open input feed");
         }
 
         if (!$out_fh = @fopen($dir.$out.".dat", 'c+')) {
             echo "ERROR: could not open $dir $out.dat\n";
-            return false;
+            return array("success"=>false, "message"=>"could not open output feed");
         }
 
         $compute_meta=compute_meta($flow_meta,$tint_meta,$text_meta);
@@ -113,17 +113,15 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
             $buffer.=pack("f",$kwh);
         }
         if(!$buffer) {
-            print("ERROR: nothing to write - all is up to date \n");
-            return false;
+            return array("success"=>true, "message"=>"nothing to write - all is up to date");
         }
 
         if(!$written_bytes=fwrite($out_fh,$buffer)){
-            print("ERROR: unable to write to the file with id=$out \n");
             fclose($flow_fh);
             fclose($tint_fh);
             fclose($text_fh);
             fclose($out_fh);
-            return false;
+            return array("success"=>false, "message"=>"unable to write to the file with id=$out");
         }
         $nbdataswritten=$written_bytes/4;
         print("NOTICE: liquidorairflow_tokwh() wrote $written_bytes bytes ($nbdataswritten float values) \n");
@@ -135,6 +133,6 @@ class PostProcess_liquidorairflow_tokwh extends PostProcess_common
         fclose($out_fh);
         print("last time value: $time / $kwh \n");
         updatetimevalue($out,$time,$kwh);
-        return array("success"=>true);
+        return array("success"=>true, "message"=>"bytes written: ".$written_bytes.", last time value: ".$time." ".$kwh);
     }
 }
