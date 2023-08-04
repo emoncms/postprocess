@@ -11,7 +11,7 @@ class PostProcess_downsample extends PostProcess_common
             "settings" => array(
                 "feed" => array("type" => "feed", "engine" => 5, "short" => "Select feed to downsample:"),
                 "new_interval" => array("type" => "value", "short" => "New feed interval:"),
-                "backup" => array("type" => "newfeed", "engine" => 5, "short" => "Enter backup feed name:", "nameappend" => "")
+                "backup" => array("type" => "newfeed", "engine" => 5, "short" => "Enter backup feed name:", "nameappend" => "", "optional" => true)
             )
         );
     }
@@ -41,9 +41,11 @@ class PostProcess_downsample extends PostProcess_common
         $output_meta->interval = $new_interval;
         $output_meta->start_time = floor($input_meta->start_time / $new_interval) * $new_interval;
 
-        copy($dir . $feed . ".meta", $dir . $backup . ".meta");
-        copy($dir . $feed . ".dat", $dir . $backup . ".dat");
-
+        if ($backup) {
+            copy($dir . $feed . ".meta", $dir . $backup . ".meta");
+            copy($dir . $feed . ".dat", $dir . $backup . ".dat");
+        }
+        
         if (!$input_fh = @fopen($dir . $feed . ".dat", 'rb')) {
             return array("success" => false, "message" => "could not open input feed");
         }

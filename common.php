@@ -34,6 +34,9 @@ class PostProcess_common
             if ($setting["type"] == "feed" || $setting["type"] == "newfeed") {
                 $feedid = (int) $processitem->{$key};
                 if (!file_exists($this->dir.$feedid.".meta")) {
+                    if (isset($setting["optional"]) && $setting["optional"]) {
+                        continue;
+                    }
                     return array("success" => false, "message" => "setting: $key, feed: $feedid.meta does not exist\n");
                 }
                 // check if feed is readable
@@ -50,6 +53,16 @@ class PostProcess_common
                 $value = (float) 1*$processitem->$key;
                 if ($value!=$processitem->$key) {
                     return array("success"=>false,"message"=>"invalid value");
+                }
+            }
+
+            if ($setting['type']=="interval") {
+                // check if interval is valid
+                if (is_numeric($processitem->key)) {
+                    $processitem->key = (int) $processitem->key;
+                }
+                if (!in_array($processitem->key, array('original',10,30,60,1800,3600))) {
+                    return array("success"=>false,"message"=>"invalid interval");
                 }
             }
 
