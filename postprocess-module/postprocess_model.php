@@ -219,7 +219,9 @@ class PostProcess
             }
         }
 
-        usort($processes, fn($a, $b) => $a['order'] <=> $b['order']);
+        usort($processes, function($a, $b) {
+            return $a['order'] <=> $b['order'];
+        });
         $ordered_processes = array();
         foreach ($processes as $process) {
             $ordered_processes[$process['key']] = $process;
