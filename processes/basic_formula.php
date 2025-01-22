@@ -42,7 +42,7 @@ class PostProcess_basic_formula extends PostProcess_common
         // regexp for starting a formula with an operator or with nothing
         $XSop="(?:-|\+|)";
         // regexp for a basic formula, ie something like f12-f43 or 2.056*f42+f45
-        $Xbf="$XSop(?:$Xnbr$Xop)*$Xf(?:$Xop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*)*";
+        $Xbf="$XSop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*(?:$Xop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*)*";
         // regexp for a scaling parameter
         $Xscaleop="(?:\*|\/)";
         $Xscale="$XSop(?:$Xnbr$Xscaleop)*(?:$Xf$Xscaleop)*";
