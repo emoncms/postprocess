@@ -63,7 +63,7 @@ class PostProcess_basic_formula extends PostProcess_common
         //checking the output feed
         $fopen_mode='ab';
         if ($processitem->process_mode=='all') {
-            fopen_mode='wb';
+            $fopen_mode='wb';
         }
         $out=$processitem->output;
         if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
