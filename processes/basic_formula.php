@@ -61,9 +61,13 @@ class PostProcess_basic_formula extends PostProcess_common
         $original=$formula;
 
         //checking the output feed
+        $fopen_mode='ab';
+        if ($processitem->process_mode=='all') {
+            fopen_mode='wb';
+        }
         $out=$processitem->output;
         if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
-        if (!$out_fh = @fopen($dir.$out.".dat", 'ab')) {
+        if (!$out_fh = @fopen($dir.$out.".dat", $fopen_mode)) {
             return array("success"=>false, "message"=>"could not open $dir $out.dat");
         }
 
@@ -171,7 +175,7 @@ class PostProcess_basic_formula extends PostProcess_common
         //we do not report the values in the meta file at this stage. we wait for the dat file to be filled with processed datas
         //if dat file is not empty, meta file should already contain correct values
         print("NOTICE : ouput is : ($out_meta->npoints,$out_meta->interval,$out_meta->start_time) \n");
-        if($out_meta->npoints==0) {
+        if($out_meta->npoints==0 || $processitem->process_mode=='from') {
             $out_meta->interval=$compute_meta->interval;
             $out_meta->start_time=$compute_meta->start_time;
         }
