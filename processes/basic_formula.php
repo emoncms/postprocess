@@ -42,7 +42,7 @@ class PostProcess_basic_formula extends PostProcess_common
         // regexp for starting a formula with an operator or with nothing
         $XSop="(?:-|\+|)";
         // regexp for a basic formula, ie something like f12-f43 or 2.056*f42+f45
-        $Xbf="$XSop(?:$Xnbr$Xop)*$Xf(?:$Xop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*)*";
+        $Xbf="$XSop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*(?:$Xop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*)*";
         // regexp for a scaling parameter
         $Xscaleop="(?:\*|\/)";
         $Xscale="$XSop(?:$Xnbr$Xscaleop)*(?:$Xf$Xscaleop)*";
@@ -61,9 +61,13 @@ class PostProcess_basic_formula extends PostProcess_common
         $original=$formula;
 
         //checking the output feed
+        $fopen_mode='ab';
+        if ($processitem->process_mode=='all') {
+            $fopen_mode='wb';
+        }
         $out=$processitem->output;
         if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
-        if (!$out_fh = @fopen($dir.$out.".dat", 'ab')) {
+        if (!$out_fh = @fopen($dir.$out.".dat", $fopen_mode)) {
             return array("success"=>false, "message"=>"could not open $dir $out.dat");
         }
 
