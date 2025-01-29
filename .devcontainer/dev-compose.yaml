@@ -3,7 +3,7 @@ services:
     image: alexjunk/emoncms
     volumes:
       - data:/data
-      - ../:${EMONCMS_DIR}/modules/postprocess
+      - ../:/opt/emoncms/modules/postprocess
     ports:
       - 8088:80
       - 8883:1883

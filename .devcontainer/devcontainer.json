@@ -1,9 +1,7 @@
 {
   "name": "postprocess_dev",
   "dockerComposeFile": "dev-compose.yaml",
-  "containerEnv": {
-    "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
-  },
+  "workspaceFolder": "/opt/emoncms/modules/postprocess",
   "shutdownAction": "stopCompose",
   "service": "devcontainer",
   "customizations": {
