@@ -13,6 +13,7 @@ class PostProcess_basic_formula extends PostProcess_common
         1162.5*f10*(f7-11) <br>
         <br>
         <font color=red>Caution : (f12-f13)*(f7-f11) will not be recognized !!</font><br>
+        <font color=red><b>The max fonction takes 2 arguments : the first is a combination of feeds, the second can only be a number !!</b></font><br>
         <font color=green>check you feeds numbers before</font><br>";
 
         return array(
@@ -28,6 +29,7 @@ class PostProcess_basic_formula extends PostProcess_common
 
     public function process($processitem)
     {
+        $DEBUG = 0;
         $result = $this->validate($processitem);
         if (!$result["success"]) return $result;
 
@@ -37,15 +39,19 @@ class PostProcess_basic_formula extends PostProcess_common
         $Xnbr="(?:[0-9]+\.[0-9]+|[0-9]+)";
         // regexp for a feed
         $Xf="f\d+";
-        // regexp for an operator - blank instead of * is not permitted
+        // regexp for an operator
+        // it is better that users dont use blank instead of * but we'll try to understand those omissions....
         $Xop="(?:-|\*|\+|\/)";
         // regexp for starting a formula with an operator or with nothing
         $XSop="(?:-|\+|)";
+        // regexp for an arithmetic parameter
+        $Xarithmop="(?:-|\+)";
         // regexp for a basic formula, ie something like f12-f43 or 2.056*f42+f45
         $Xbf="$XSop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*(?:$Xop(?:$Xnbr$Xop)*$Xf(?:$Xop$Xnbr)*)*";
         // regexp for a scaling parameter
         $Xscaleop="(?:\*|\/)";
         $Xscale="$XSop(?:$Xnbr$Xscaleop)*(?:$Xf$Xscaleop)*";
+        $Xscale_right="(?:$Xscaleop$Xnbr)*(?:$Xscaleop$Xf)*";
         // functions list
         // brackets must always be the last function in the list
         $functions=[
@@ -56,20 +62,36 @@ class PostProcess_basic_formula extends PostProcess_common
 
         //retrieving the formula
         $formula=$processitem->formula;
-        $formula=str_replace('\\','',$formula);
-        $formula=strtolower($formula);
+        //removing useless brackets
+        $pos=0;
         $original=$formula;
-
-        //checking the output feed
-        $fopen_mode='ab';
-        if ($processitem->process_mode=='all') {
-            $fopen_mode='wb';
+        while ($pos<strlen(string: $original)) {
+            $position_start = strpos(haystack: $original, needle: "(", offset: $pos);
+            if ($position_start===false) break;
+            $position_end = strpos(haystack: $original, needle: ")", offset: $pos);
+            $chunk=substr(string: $original, offset: $position_start+1, length: $position_end-$position_start-1);
+            if (!str_contains(haystack: $chunk, needle: "+") && !str_contains(haystack: $chunk, needle: "-")){
+              $formula=str_replace(search: "($chunk)", replace: $chunk, subject: $formula);
+            }
+            $pos+=$position_end+1;
         }
-        $out=$processitem->output;
-        if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
-        if (!$out_fh = @fopen($dir.$out.".dat", $fopen_mode)) {
-            return array("success"=>false, "message"=>"could not open $dir $out.dat");
+        //adding missing * for multiplication
+        while (preg_match("/($Xarithmop){1}($Xnbr)*\(/",$formula, $tab)){
+            $replacement=match(count($tab)){
+              2=>"$tab[1]1*(",
+              3=>"$tab[1]$tab[2]*(",
+            };
+            $formula=str_replace(search: $tab[0], replace: $replacement, subject: $formula);
+        };
+        //$formula=str_replace(search: '-(',replace: '-1*(',subject: $formula);
+        //$formula=str_replace(search: '+(',replace: '+1*(',subject: $formula);
+        if ($DEBUG==1) {
+          print $formula;
+          print "\n";
         }
+        $formula=str_replace(search: '\\',replace: '',subject: $formula);
+        $formula=strtolower(string: $formula);
+        $original=$formula;
 
         //we catch the distinct feed numbers involved in the formula
         $feed_ids=[];
@@ -84,12 +106,17 @@ class PostProcess_basic_formula extends PostProcess_common
         for ($i=0;$i<$nbf;$i++){
           $e=$functions[$i]["name"];
           $f=$functions[$i]["f"];
+          if ($DEBUG==1) {
+            print "SEARCHING FOR $e FUNCTION";
+            print "\n";
+          };
           while (preg_match("/$f/",$formula,$tab)) {
               //we remove the first element of tab which is the complete full match
               //the formula matching /$Xbf/ is therefore tab[0]
               $matched=array_shift($tab);
               $array[]=[
                   "scale"=>1,
+                  "scale_right"=>1,
                   "fun"=>$e,
                   "formula"=>$tab
               ];
@@ -98,33 +125,59 @@ class PostProcess_basic_formula extends PostProcess_common
               if (preg_match("/($Xscale)func/",$formula,$c)){
                   if ($c[1]) $array[$index-1]["scale"]=$c[1];
               }
-              $formula=str_replace("$c[1]func","",$formula);
+              if (preg_match("/func($Xscale_right)/",$formula,$d)){
+                  if ($d[1]) $array[$index-1]["scale_right"]=$d[1];
+              }
+              $formula=str_replace("$c[1]func$d[1]","",$formula);
           }
         }
+        if ($DEBUG==1) print_r($array);
         //checking if we have only a basic formula
+        if ($DEBUG==1) {
+          print "SEARCHING FOR BASIC FORMULA";
+          print "\n";
+        };
         if (preg_match("/^$Xbf$/",$formula,$tab)){
             $array[]=[
                 "scale"=>1,
+                "scale_right"=>1,
                 "fun"=>"none",
                 "formula"=>$tab
             ];
         }
-        //we rebuild the formula with what we have extracted
-        $recf="";
+        //can we rebuild the formula ?
+        $original_copy=$original;
         foreach ($array as $a){
             if ($a["scale"]=="1") $scale=""; else $scale=$a["scale"];
+            if ($a["scale_right"]=="1") $scale_right=""; else $scale_right=$a["scale_right"];
             if ($a["fun"]=="max"){
-              $recf.="{$scale}max({$a["formula"][0]},{$a["formula"][1]})";
+              $chunk="{$scale}max({$a["formula"][0]},{$a["formula"][1]})";
             }
             else if ($a["fun"]=="brackets"){
-              $recf.="{$scale}({$a["formula"][0]})";
+              $chunk="{$scale}({$a["formula"][0]}){$scale_right}";
             }
             else if ($a["fun"]=="none"){
-              $recf.="{$scale}{$a['formula'][0]}";
+              $chunk="{$scale}{$a['formula'][0]}";
             }
+            $original_copy=str_replace($chunk,"", $original_copy);
         }
-        if ($recf==$original) print("formula is OK!!<br>"); else {
+        if ($DEBUG==1) {
+          print $original_copy;
+          print "\n\n";
+        }
+        if ($original_copy=="") print "formula is OK!!\n"; else {
           return array("success"=>false, "message"=>"could not understand your formula SORRY....");
+        }
+
+        //checking the output feed
+        $fopen_mode='ab';
+        if ($processitem->process_mode=='all') {
+            $fopen_mode='wb';
+        }
+        $out=$processitem->output;
+        if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
+        if (!$out_fh = @fopen($dir.$out.".dat", $fopen_mode)) {
+            return array("success"=>false, "message"=>"could not open $dir $out.dat");
         }
 
         $elements=[];
@@ -141,6 +194,16 @@ class PostProcess_basic_formula extends PostProcess_common
               }
             }
             $element->scale=$fly;
+            $fly=[];
+            foreach (preg_split("@(?=(\*|\/))@",$a["scale_right"]) as $piece) {
+              if ($result=preg_match("/($Xop)?($Xnbr)?($Xf)?/",$piece,$b)){
+                if (count($b)>2){
+                  $c=ftoa($b);
+                  if($c[2]) $fly[]=$c;
+                }
+              }
+            }
+            $element->scale_right=$fly;
             $element->function=$a["fun"];
             if (count($a["formula"]) > 1) $element->arg2=$a["formula"][1];
             // we analyse the formula
@@ -158,6 +221,7 @@ class PostProcess_basic_formula extends PostProcess_common
             }
             $elements[]=$element;
         }
+        if ($DEBUG) print_r($elements);
 
         //we retrieve the meta and open the dat files
         foreach ($feed_ids as $id){
@@ -197,13 +261,14 @@ class PostProcess_basic_formula extends PostProcess_common
           foreach($elements as $element){
             $s1=bfo([$element->scale],$feeds_meta,$feeds_dat,$time);
             $s2=bfo($element->formula,$feeds_meta,$feeds_dat,$time);
-            //print($s1."-----".$s2);
-            if (!is_nan($s1) && !is_nan($s2)) {
+            $s3=bfo([$element->scale_right],$feeds_meta,$feeds_dat,$time);
+            //print("$s1-----$s2-----$s3");
+            if (!is_nan($s1) && !is_nan($s2) && !is_nan($s3)) {
               if($element->function=="max") {
-                $s[]=$s1*max($s2,$element->arg2);
+                $s[]=$s1*max($s2,$element->arg2)*$s3;
               }
               if($element->function=="brackets" || $element->function=="none") {
-                $s[]=$s1*$s2;
+                $s[]=$s1*$s2*$s3;
               }
             } else $s[] = NAN;
           }
