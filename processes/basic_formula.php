@@ -77,8 +77,8 @@ class PostProcess_basic_formula extends PostProcess_common
             $pos+=$position_end+1;
         }
         //adding missing * for multiplication
-        while (preg_match("/($Xarithmop){1}($Xnbr)*\(/",$formula, $tab)){
-            $replacement=match(count($tab)){
+        while (preg_match(pattern: "/($Xarithmop){1}($Xnbr)*\(/",subject: $formula, matches: $tab)){
+            $replacement=match(count(value: $tab)){
               2=>"$tab[1]1*(",
               3=>"$tab[1]$tab[2]*(",
             };
@@ -126,7 +126,7 @@ class PostProcess_basic_formula extends PostProcess_common
               if (preg_match(pattern: "/($Xscale)func/", subject: $formula, matches: $c)){
                   if ($c[1]) $array[$index-1]["scale"]=$c[1];
               }
-              if (preg_match("/func($Xscale_right)/",$formula,$d)){
+              if (preg_match(pattern: "/func($Xscale_right)/",subject: $formula, matches: $d)){
                   if ($d[1]) $array[$index-1]["scale_right"]=$d[1];
               }
               $formula=str_replace(search: "$c[1]func$d[1]", replace: "", subject: $formula);
@@ -160,7 +160,7 @@ class PostProcess_basic_formula extends PostProcess_common
             else if ($a["fun"]=="none"){
               $chunk="{$scale}{$a['formula'][0]}";
             }
-            $original_copy=str_replace($chunk,"", $original_copy);
+            $original_copy=str_replace(search: $chunk, replace: "", subject: $original_copy);
         }
         if ($DEBUG==1) {
           print $original_copy;
@@ -176,8 +176,8 @@ class PostProcess_basic_formula extends PostProcess_common
             $fopen_mode='wb';
         }
         $out=$processitem->output;
-        if(!$out_meta = getmeta($dir,$out)) return array("success"=>false, "message"=>"could not get meta for $out");
-        if (!$out_fh = @fopen($dir.$out.".dat", $fopen_mode)) {
+        if(!$out_meta = getmeta(dir: $dir,id: $out)) return array("success"=>false, "message"=>"could not get meta for $out");
+        if (!$out_fh = @fopen(filename: $dir.$out.".dat", mode: $fopen_mode)) {
             return ["success"=>false, "message"=>"could not open $dir $out.dat"];
         }
 
@@ -196,10 +196,10 @@ class PostProcess_basic_formula extends PostProcess_common
             }
             $element->scale=$fly;
             $fly=[];
-            foreach (preg_split("@(?=(\*|\/))@",$a["scale_right"]) as $piece) {
-              if ($result=preg_match("/($Xop)?($Xnbr)?($Xf)?/",$piece,$b)){
-                if (count($b)>2){
-                  $c=ftoa($b);
+            foreach (preg_split(pattern: "@(?=(\*|\/))@",subject: $a["scale_right"]) as $piece) {
+              if ($result=preg_match(pattern: "/($Xop)?($Xnbr)?($Xf)?/",subject: $piece, matches: $b)){
+                if (count(value: $b)>2){
+                  $c=ftoa(b: $b);
                   if($c[2]) $fly[]=$c;
                 }
               }
@@ -213,7 +213,7 @@ class PostProcess_basic_formula extends PostProcess_common
                 $fly=[];
                 foreach(preg_split(pattern: "@(?=(\*|\/))@", subject: $pieces) as $piece) {
                   if ($result=preg_match(pattern: "/($Xop)?($Xnbr)?($Xf)?/", subject: $piece, matches: $b)) {
-                    $c=ftoa($b);
+                    $c=ftoa(b: $b);
                     if($c[2]) $fly[]=$c;
                   }
                 }
@@ -222,7 +222,7 @@ class PostProcess_basic_formula extends PostProcess_common
             }
             $elements[]=$element;
         }
-        if ($DEBUG) print_r($elements);
+        if ($DEBUG) print_r(value: $elements);
 
         //we retrieve the meta and open the dat files
         foreach ($feed_ids as $id){
