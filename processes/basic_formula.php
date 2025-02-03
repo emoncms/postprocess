@@ -201,7 +201,7 @@ class PostProcess_basic_formula extends PostProcess_common
             //print($s1."-----".$s2);
             if (!is_nan(num: $s1) && !is_nan(num: $s2)) {
               if($element->function=="max") {
-                $s[]=$s1*max(value: $s2, values: $element->arg2);
+                $s[]=$s1*max([$s2, $element->arg2]);
               }
               if($element->function=="brackets" || $element->function=="none") {
                 $s[]=$s1*$s2;
