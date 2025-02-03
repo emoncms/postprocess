@@ -145,7 +145,28 @@ class PostProcess_basic_formula extends PostProcess_common
                 "fun"=>"none",
                 "formula"=>$tab
             ];
+            $formula=str_replace(search: $tab[0], replace: "", subject: $formula);
         }
+        if ($DEBUG==1) {
+          print_r($array);
+          print "WHAT REMAINS IS $formula";
+          print "\n";
+          print "SEARCHING FOR TRANSLATIONS";
+          print "\n";
+        }
+        // searching for remaining translations
+        if (isset($array) and $formula) {
+          while (preg_match(pattern: "/(?:$XSop)$Xnbr/", subject: $formula, matches: $tab)){
+            $array[]=[
+                "scale"=>1,
+                "scale_right"=>1,
+                "fun"=>"none",
+                "formula"=>$tab
+            ];
+            $formula=str_replace(search: $tab[0], replace: "", subject: $formula);
+          }
+        }
+        if ($DEBUG==1) print_r($array);
         //can we rebuild the formula ?
         $original_copy=$original;
         foreach ($array as $a){
