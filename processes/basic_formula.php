@@ -40,7 +40,7 @@ class PostProcess_basic_formula extends PostProcess_common
         // regexp for a feed
         $Xf="f\d+";
         // regexp for an operator
-        // it is better that users dont use blank instead of * but we'll try to understand those omissions....
+        // it is better that users dont use blank instead of * but blank is accepted....
         $Xop="(?:-|\*|\+|\/)";
         // regexp for starting a formula with an operator or with nothing
         $XSop="(?:-|\+|)";
@@ -55,7 +55,7 @@ class PostProcess_basic_formula extends PostProcess_common
         // functions list
         // brackets must always be the last function in the list
         $functions=[
-          ["name"=>"max","f"=>"max\(($Xbf),($Xnbr)\)"],
+          ["name"=>"max","f"=>"max\(($Xbf),($Xnbr|$Xbf)\)"],
           ["name"=>"brackets","f"=>"\(($Xbf)\)"],
         ];
         $nbf=count(value: $functions);
@@ -69,23 +69,37 @@ class PostProcess_basic_formula extends PostProcess_common
         while ($pos<strlen(string: $original)) {
             $position_start = strpos(haystack: $original, needle: "(", offset: $pos);
             if ($position_start===false) break;
+            //is the bracket belonging to a function ??
+            $function_found=false;
+            if ($position_start>=3) {
+              if (substr(string: $original, offset:$position_start-3, length: 3)=="max") {
+                $function_found=true;
+              }
+            }
             $position_end = strpos(haystack: $original, needle: ")", offset: $pos);
             $chunk=substr(string: $original, offset: $position_start+1, length: $position_end-$position_start-1);
-            if (!str_contains(haystack: $chunk, needle: "+") && !str_contains(haystack: $chunk, needle: "-")){
+            if (!str_contains(haystack: $chunk, needle: "+") && !str_contains(haystack: $chunk, needle: "-") && !$function_found){
               $formula=str_replace(search: "($chunk)", replace: $chunk, subject: $formula);
             }
             $pos+=$position_end+1;
         }
         //adding missing * for multiplication
-        while (preg_match(pattern: "/($Xarithmop){1}($Xnbr)*\(/",subject: $formula, matches: $tab)){
+        //initial implentation
+        //$formula=str_replace(search: '-(',replace: '-1*(',subject: $formula);
+        //$formula=str_replace(search: '+(',replace: '+1*(',subject: $formula);
+        //to cover cases like +or-( and +or-2(
+        //we use $Xarithmop and not $XSop because with $XSop we would replace all ( by 1*(
+        while (preg_match(pattern: "/($Xarithmop){1}($Xnbr)*\(/", subject: $formula, matches: $tab)){
             $replacement=match(count(value: $tab)){
               2=>"$tab[1]1*(",
               3=>"$tab[1]$tab[2]*(",
             };
             $formula=str_replace(search: $tab[0], replace: $replacement, subject: $formula);
         };
-        //$formula=str_replace(search: '-(',replace: '-1*(',subject: $formula);
-        //$formula=str_replace(search: '+(',replace: '+1*(',subject: $formula);
+        //to cover remaining cases like 2(
+        while (preg_match(pattern: "/($Xnbr)\(/", subject: $formula, matches: $tab)) {
+            $formula=str_replace(search: $tab[0], replace: "$tab[1]*(", subject: $formula);
+        }
         if ($DEBUG==1) {
           print $formula;
           print "\n";
@@ -154,7 +168,7 @@ class PostProcess_basic_formula extends PostProcess_common
           print "SEARCHING FOR TRANSLATIONS";
           print "\n";
         }
-        // searching for remaining translations
+        // searching for remaining numbers to add or subtract
         if (isset($array) and $formula) {
           while (preg_match(pattern: "/(?:$XSop)$Xnbr/", subject: $formula, matches: $tab)){
             $array[]=[
@@ -227,6 +241,7 @@ class PostProcess_basic_formula extends PostProcess_common
             }
             $element->scale_right=$fly;
             $element->function=$a["fun"];
+            // THIS IS THE SECOND ARGUMENT FOR THE MAX FUNCTION !!!
             if (count(value: $a["formula"]) > 1) $element->arg2=$a["formula"][1];
             // we analyse the formula
             foreach(preg_split(pattern: "@(?=(-|\+))@", subject: $a["formula"][0]) as $pieces) {
@@ -287,7 +302,7 @@ class PostProcess_basic_formula extends PostProcess_common
             //print("$s1-----$s2-----$s3");
             if (!is_nan(num: $s1) && !is_nan(num: $s2) && !is_nan(num: $s3)) {
               if($element->function=="max") {
-                $s[]=$s1*max(value: $s2,values: $element->arg2)*$s3;
+                $s[]=$s1*max([$s2,$element->arg2])*$s3;
               }
               if($element->function=="brackets" || $element->function=="none") {
                 $s[]=$s1*$s2*$s3;
