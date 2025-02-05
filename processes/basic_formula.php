@@ -1,6 +1,19 @@
 <?php
 
-// these functions could ultimately be integrated into a class
+function formula_to_array($formula_string, $reg_exp): array
+{
+  //process a formula string to an array
+  $fly=[];
+  foreach (preg_split(pattern: "@(?=(\*|\/))@",subject: $formula_string) as $piece) {
+    if (preg_match(pattern: $reg_exp, subject: $piece, matches: $b)){
+      if (count(value: $b)>2){
+        $c=ftoa(b: $b);
+        if($c[2]) $fly[]=$c;
+      }
+    }
+  }
+  return $fly;
+}
 
 class PostProcess_basic_formula extends PostProcess_common
 {
@@ -146,12 +159,12 @@ class PostProcess_basic_formula extends PostProcess_common
               $formula=str_replace(search: "$c[1]func$d[1]", replace: "", subject: $formula);
           }
         }
-        if ($DEBUG==1) print_r($array);
-        //checking if we have only a basic formula
         if ($DEBUG==1) {
+          print_r(value: $array);
           print "SEARCHING FOR BASIC FORMULA";
           print "\n";
         };
+        //checking if we have only a basic formula
         if (preg_match(pattern: "/^$Xbf$/", subject: $formula, matches: $tab)){
             $array[]=[
                 "scale"=>1,
@@ -162,10 +175,14 @@ class PostProcess_basic_formula extends PostProcess_common
             $formula=str_replace(search: $tab[0], replace: "", subject: $formula);
         }
         if ($DEBUG==1) {
-          print_r($array);
-          print "WHAT REMAINS IS $formula";
-          print "\n";
-          print "SEARCHING FOR TRANSLATIONS";
+          print_r(value: $array);
+          if ($formula) {
+            print "WHAT REMAINS IS $formula";
+            print "\n";
+            print "SEARCHING FOR REMAINING ADDITIONS/SUBTRACTIONS";
+          } else {
+            print "EVERYTHING HAS BEEN ANALYZED";
+          }
           print "\n";
         }
         // searching for remaining numbers to add or subtract
@@ -180,21 +197,17 @@ class PostProcess_basic_formula extends PostProcess_common
             $formula=str_replace(search: $tab[0], replace: "", subject: $formula);
           }
         }
-        if ($DEBUG==1) print_r($array);
-        //can we rebuild the formula ?
+        if ($DEBUG==1) print_r(value: $array);
+        //can we decompose the formula without missing any part ?
         $original_copy=$original;
         foreach ($array as $a){
-            if ($a["scale"]=="1") $scale=""; else $scale=$a["scale"];
-            if ($a["scale_right"]=="1") $scale_right=""; else $scale_right=$a["scale_right"];
-            if ($a["fun"]=="max"){
-              $chunk="{$scale}max({$a["formula"][0]},{$a["formula"][1]})";
-            }
-            else if ($a["fun"]=="brackets"){
-              $chunk="{$scale}({$a["formula"][0]}){$scale_right}";
-            }
-            else if ($a["fun"]=="none"){
-              $chunk="{$scale}{$a['formula'][0]}";
-            }
+            $scale = ($a["scale"]=="1") ? "" : $a["scale"];
+            $scale_right = ($a["scale_right"]=="1") ? "" : $a["scale_right"];
+            $chunk = match($a["fun"]) {
+              "max" => "{$scale}max({$a["formula"][0]},{$a["formula"][1]}){$scale_right}",
+              "brackets" => "{$scale}({$a["formula"][0]}){$scale_right}",
+              "none" => $chunk=$a['formula'][0]
+            };
             $original_copy=str_replace(search: $chunk, replace: "", subject: $original_copy);
         }
         if ($DEBUG==1) {
@@ -219,41 +232,39 @@ class PostProcess_basic_formula extends PostProcess_common
         $elements=[];
         foreach ($array as $a){
             $element=new stdClass();
+            $reg_exp = "/($Xop)?($Xnbr)?($Xf)?/";
             // we analyse the scaling parameter
-            $fly=[];
-            foreach (preg_split(pattern: "@(?=(\*|\/))@", subject: $a["scale"]) as $piece) {
-              if ($result=preg_match(pattern: "/($Xop)?($Xnbr)?($Xf)?/", subject: $piece, matches: $b)){
-                if (count(value: $b)>2){
-                  $c=ftoa(b: $b);
-                  if($c[2]) $fly[]=$c;
-                }
-              }
-            }
-            $element->scale=$fly;
-            $fly=[];
-            foreach (preg_split(pattern: "@(?=(\*|\/))@",subject: $a["scale_right"]) as $piece) {
-              if ($result=preg_match(pattern: "/($Xop)?($Xnbr)?($Xf)?/",subject: $piece, matches: $b)){
-                if (count(value: $b)>2){
-                  $c=ftoa(b: $b);
-                  if($c[2]) $fly[]=$c;
-                }
-              }
-            }
-            $element->scale_right=$fly;
+            $element->scale=formula_to_array(
+              formula_string: $a["scale"],
+              reg_exp: $reg_exp
+            );
+            $element->scale_right=formula_to_array(
+              formula_string: $a["scale_right"],
+              reg_exp: $reg_exp
+            );
             $element->function=$a["fun"];
-            // THIS IS THE SECOND ARGUMENT FOR THE MAX FUNCTION !!!
-            if (count(value: $a["formula"]) > 1) $element->arg2=$a["formula"][1];
-            // we analyse the formula
-            foreach(preg_split(pattern: "@(?=(-|\+))@", subject: $a["formula"][0]) as $pieces) {
-              if(strlen(string: $pieces)){
-                $fly=[];
-                foreach(preg_split(pattern: "@(?=(\*|\/))@", subject: $pieces) as $piece) {
-                  if ($result=preg_match(pattern: "/($Xop)?($Xnbr)?($Xf)?/", subject: $piece, matches: $b)) {
-                    $c=ftoa(b: $b);
-                    if($c[2]) $fly[]=$c;
+            // arg2 IS THE SECOND ARGUMENT FOR THE MAX FUNCTION !!!
+            if (count(value: $a["formula"]) > 1) {
+              if (is_numeric(value: $a["formula"][1])) {
+                $element->arg2 = $a["formula"][1];
+              } else {
+                foreach(preg_split(pattern: "@(?=(-|\+))@", subject: $a["formula"][1]) as $pieces) {
+                  if (strlen(string: $pieces)) {
+                    $element->arg2[]=formula_to_array(
+                      formula_string: $pieces,
+                      reg_exp: $reg_exp
+                    );
                   }
                 }
-                $element->formula[]=$fly;
+              }
+            }
+            // we analyse the formula
+            foreach(preg_split(pattern: "@(?=(-|\+))@", subject: $a["formula"][0]) as $pieces) {
+              if (strlen(string: $pieces)) {
+                $element->formula[]=formula_to_array(
+                  formula_string: $pieces,
+                  reg_exp: $reg_exp
+                );
               }
             }
             $elements[]=$element;
@@ -296,22 +307,41 @@ class PostProcess_basic_formula extends PostProcess_common
         for ($time=$writing_start_time;$time<$writing_end_time;$time+=$interval){
           $s=[];
           foreach($elements as $element){
-            $s1=bfo(elements: [$element->scale],feeds_meta: $feeds_meta,feeds_dat: $feeds_dat,time: $time);
-            $s2=bfo(elements: $element->formula,feeds_meta: $feeds_meta,feeds_dat: $feeds_dat,time: $time);
-            $s3=bfo(elements: [$element->scale_right],feeds_meta: $feeds_meta,feeds_dat: $feeds_dat,time: $time);
+            $s1=bfo(
+              elements: [$element->scale],
+              feeds_meta: $feeds_meta,
+              feeds_dat: $feeds_dat,
+              time: $time
+            );
+            $s2=bfo(
+              elements: $element->formula,
+              feeds_meta: $feeds_meta,
+              feeds_dat: $feeds_dat,
+              time: $time
+            );
+            $s3=bfo(
+              elements: [$element->scale_right],
+              feeds_meta: $feeds_meta,
+              feeds_dat: $feeds_dat,
+              time: $time
+            );
             //print("$s1-----$s2-----$s3");
             if (!is_nan(num: $s1) && !is_nan(num: $s2) && !is_nan(num: $s3)) {
               if($element->function=="max") {
-                $s[]=$s1*max([$s2,$element->arg2])*$s3;
+                $arg2 = (is_numeric(value: $element->arg2)) ? $element->arg2 : bfo(
+                  elements: $element->arg2,
+                  feeds_meta: $feeds_meta,
+                  feeds_dat: $feeds_dat,
+                  time: $time
+                );
+                $s[] = (!is_nan(num: $arg2)) ? $s1*max([$s2,$arg2])*$s3 : NAN;
               }
               if($element->function=="brackets" || $element->function=="none") {
                 $s[]=$s1*$s2*$s3;
               }
             } else $s[] = NAN;
           }
-          if (!in_array(needle: NAN, haystack: $s)){
-            $sum=array_sum(array: $s);
-          } else $sum=NAN;
+          $sum = (!in_array(needle: NAN, haystack: $s)) ? array_sum(array: $s) : NAN;
           $buffer.=pack("f", $sum);
         }
 
@@ -332,6 +362,9 @@ class PostProcess_basic_formula extends PostProcess_common
         fclose(stream: $out_fh);
         print("last time value: $time / $sum \n");
         updatetimevalue(id: $out, time: $time, value: $sum);
-        return ["success"=>true, "message"=>"bytes written: $written_bytes, last time value: $time $sum"];
+        return [
+          "success"=>true,
+          "message"=>"bytes written: $written_bytes, last time value: $time, last written value $sum"
+        ];
     }
 }
