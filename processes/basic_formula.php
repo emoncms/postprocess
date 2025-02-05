@@ -26,7 +26,6 @@ class PostProcess_basic_formula extends PostProcess_common
         1162.5*f10*(f7-11) <br>
         <br>
         <font color=red>Caution : (f12-f13)*(f7-f11) will not be recognized !!</font><br>
-        <font color=red><b>The max fonction takes 2 arguments : the first is a combination of feeds, the second can only be a number !!</b></font><br>
         <font color=green>check you feeds numbers before</font><br>";
 
         return [
