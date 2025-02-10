@@ -305,6 +305,9 @@ class PostProcess
     }
 
     public function check_service_runner() {
+        if (file_exists("/.dockerenv")) {
+            return true;
+        }
         $service_running = false;
         @exec("systemctl show service-runner | grep State", $output);
         foreach ($output as $line) {

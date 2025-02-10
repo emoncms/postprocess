@@ -1,0 +1,12 @@
+services:
+  devcontainer:
+    image: alexjunk/emoncms
+    volumes:
+      - data:/data
+      - ../:/opt/emoncms/modules/postprocess
+    ports:
+      - 8088:80
+      - 8883:1883
+    restart: always
+volumes:
+  data:

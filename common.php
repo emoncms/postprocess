@@ -128,7 +128,7 @@ function createmeta($dir, $id, $meta)
 }
 
 //compute meta datas of different feeds intended for a preprocessing
-function compute_meta()
+function compute_meta(): stdClass
 {
     $numargs = func_num_args();
     $arg_list = func_get_args();
@@ -163,13 +163,13 @@ ouputs a formula element as a 3 elements vector :
 1 -> operator
 2 -> value or feed number
 */
-function ftoa($b)
+function ftoa($b): array
 {
     $c = [];
     //print_r($b);
-    if (sizeof($b) == 4) {
+    if (sizeof(value: $b) == 4) {
         $c[0] = "feed";
-        $c[2] = intval(substr($b[3], 1));
+        $c[2] = intval(value: substr(string: $b[3], offset: 1));
     } else {
         $c[0] = "value";
         $c[2] = $b[2];
@@ -191,7 +191,7 @@ a formula element is a 3 elements vector :
 2 -> value or feed number
 feeds_meta : array of metas such as produced by getmeta
 */
-function bfo($elements, $feeds_meta, $feeds_dat, $time)
+function bfo($elements, $feeds_meta, $feeds_dat, $time): float|int
 {
     $s = [];
     foreach ($elements as $element) {
@@ -199,26 +199,26 @@ function bfo($elements, $feeds_meta, $feeds_dat, $time)
         foreach ($element as $e) {
             $value = NAN;
             if ($e[0] == "feed") {
-                $pos = floor(($time - $feeds_meta[$e[2]]->start_time) / $feeds_meta[$e[2]]->interval);
+                $pos = floor(num: ($time - $feeds_meta[$e[2]]->start_time) / $feeds_meta[$e[2]]->interval);
                 if ($pos >= 0 && $pos < $feeds_meta[$e[2]]->npoints) {
-                    fseek($feeds_dat[$e[2]], $pos * 4);
+                    fseek(stream: $feeds_dat[$e[2]], offset: $pos * 4);
                     $tmp = unpack("f", fread($feeds_dat[$e[2]], 4));
                     $value = $tmp[1];
                 }
             }
             if ($e[0] == "value") $value = $e[2];
-            if (!is_nan($value) && $value != 0) {
+            if (!is_nan(num: $value) && $value != 0) {
                 if ($e[1] == "/") $value = 1 / $value;
                 if ($e[1] == "-") $value = -$value;
             }
             $values[] = $value;
         }
-        if (!in_array(NAN, $values)) {
-            $s[] = array_product($values);
+        if (!in_array(needle: NAN, haystack: $values)) {
+            $s[] = array_product(array: $values);
         } else $s[] = NAN;
     }
-    if (!in_array(NAN, $s)) {
-        $sum = array_sum($s);
+    if (!in_array(needle: NAN, haystack: $s)) {
+        $sum = array_sum(array: $s);
     } else $sum = NAN;
 
     return $sum;

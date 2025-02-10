@@ -1,0 +1,14 @@
+{
+  "name": "postprocess_dev",
+  "dockerComposeFile": "dev-compose.yaml",
+  "workspaceFolder": "/opt/emoncms/modules/postprocess",
+  "shutdownAction": "stopCompose",
+  "service": "devcontainer",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "devsense.phptools-vscode"
+      ]
+    }
+  }
+}
