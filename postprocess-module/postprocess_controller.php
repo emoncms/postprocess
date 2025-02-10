@@ -48,7 +48,23 @@ function postprocess_controller()
 
     if ($route->action == "create") {
         $params = json_decode(file_get_contents('php://input'));
-        return $postprocess->add($session['userid'], $params);
+
+        // if array of processes, add each one, else add single process
+        if (is_array($params)) {
+            $response = array();
+            $success_count = 0;
+            foreach ($params as $process) {
+                $result = $postprocess->add($session['userid'], $process);
+                if ($result['success'] == false) {
+                    return $result;
+                } else {
+                    $success_count++;
+                }
+            }
+            return array("success" => true, "count" => $success_count);
+        } else {
+            return $postprocess->add($session['userid'], $params);
+        }
     }
 
     if ($route->action == 'edit') {

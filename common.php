@@ -27,8 +27,14 @@ class PostProcess_common
     {
         $settings = $this->description()["settings"];
         foreach ($settings as $key=>$setting) {
-            if (!isset($processitem->{$key})) {
+            $optional = !empty($setting['optional']);
+
+            if (!isset($processitem->{$key}) && !$optional) {
                 return array("success" => false, "message" => "setting ".$key." not set\n");
+            }
+
+            if (!isset($processitem->{$key}) && $optional) {
+                continue;
             }
 
             if ($setting["type"] == "feed" || $setting["type"] == "newfeed") {

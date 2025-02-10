@@ -24,7 +24,12 @@ class PostProcess_downsample extends PostProcess_common
         $dir = $this->dir;
         $feed = $processitem->feed;
         $new_interval = $processitem->new_interval;
-        $backup = $processitem->backup;
+        
+        if (isset($processitem->backup)) {
+            $backup = $processitem->backup;
+        } else {
+            $backup = false;
+        }
 
         $input_meta = getmeta($dir, $feed);
 

@@ -244,8 +244,15 @@ class PostProcess
         $process = $params->process;
 
         foreach ($this->processes[$process]['settings'] as $key => $option) {
-            if (!isset($params->$key))
-                return array('success'=>false, 'message'=>"missing option $key");
+            $optional = !empty($option['optional']);
+
+            if ($optional && !isset($params->$key)) {
+                continue; // Skip processing for optional missing parameters
+            }
+
+            if (!isset($params->$key)) {
+                return array('success' => false, 'message' => "missing option $key");
+            }
 
             if ($option['type'] == "feed" || $option['type'] == "newfeed") {
                 $feedid = (int) $params->$key;
