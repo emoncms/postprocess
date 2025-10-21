@@ -104,9 +104,9 @@ class PostProcess_batterysimulator extends PostProcess_common
         // Get starting values
         $model->seek_to_time($start_time);    
         if ($model->meta['charge_kwh']->npoints) $charge_kwh = $model->read('charge_kwh',$charge_kwh);
-        if ($model->meta['discharge_kwh']->npoints) $charge_kwh = $model->read('discharge_kwh',$charge_kwh);
-        if ($model->meta['import_kwh']->npoints) $charge_kwh = $model->read('import_kwh',$charge_kwh);
-        if ($model->meta['solar_direct_kwh']->npoints) $charge_kwh = $model->read('solar_direct_kwh',$charge_kwh);
+        if ($model->meta['discharge_kwh']->npoints) $discharge_kwh = $model->read('discharge_kwh',$discharge_kwh);
+        if ($model->meta['import_kwh']->npoints) $import_kwh = $model->read('import_kwh',$import_kwh);
+        if ($model->meta['solar_direct_kwh']->npoints) $solar_direct_kwh = $model->read('solar_direct_kwh',$solar_direct_kwh);
         
         if ($model->meta['soc']->npoints) {
             $soc = $model->read('soc',$soc);
