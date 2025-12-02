@@ -24,6 +24,8 @@ class PostProcess_batterysimulator extends PostProcess_common
                 "timezone"=>array("type"=>"timezone", "default"=>"Europe/London", "short"=>"Timezone for offpeak charging"),
                 "offpeak_soc_target"=>array("type"=>"value", "default"=>0, "short"=>"Offpeak charging SOC target in % (0 = turn off)"),
                 "offpeak_start"=>array("type"=>"value", "default"=>3, "short"=>"Offpeak charging start time"),
+                "discharge_start"=>array("type"=>"value", "default"=>7, "short"=>"Discharge start time"),
+                "discharge_end"=>array("type"=>"value", "default"=>22, "short"=>"Discharge end time"),
                 "charge"=>array("type"=>"newfeed", "default"=>"battery_charge", "engine"=>5, "short"=>"Enter battery charge feed name:"),
                 "discharge"=>array("type"=>"newfeed", "default"=>"battery_discharge", "engine"=>5, "short"=>"Enter battery discharge feed name:"),
                 "soc"=>array("type"=>"newfeed", "default"=>"battery_soc", "engine"=>5, "short"=>"Enter battery SOC feed name:"),
@@ -165,18 +167,20 @@ class PostProcess_batterysimulator extends PostProcess_common
             
             // Discharge when use is more than solar
             $discharge = 0;
-            if ($use>$solar && $charge==0) {
-                $discharge = $use-$solar;
-                if ($discharge>$p->max_discharge_rate) $discharge = $p->max_discharge_rate;
-                $discharge_before_loss = $discharge / $single_trip_efficiency;
-                $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
-                // Lower limit
-                if (($soc-$soc_dec)<=0) {
-                    $soc_dec = $soc;
-                    $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
-                    $discharge = $discharge_before_loss * $single_trip_efficiency;
+            if ($hour>=$p->discharge_start && $hour<$p->discharge_end) {
+                if ($use>$solar && $charge==0) {
+                    $discharge = $use-$solar;
+                    if ($discharge>$p->max_discharge_rate) $discharge = $p->max_discharge_rate;
+                    $discharge_before_loss = $discharge / $single_trip_efficiency;
+                    $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
+                    // Lower limit
+                    if (($soc-$soc_dec)<=0) {
+                        $soc_dec = $soc;
+                        $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
+                        $discharge = $discharge_before_loss * $single_trip_efficiency;
+                    }
+                    $soc -= $soc_dec;
                 }
-                $soc -= $soc_dec;
             }
                     
             $balance = $solar - $use - $charge + $discharge;
