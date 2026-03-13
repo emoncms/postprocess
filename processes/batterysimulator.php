@@ -59,9 +59,13 @@ class PostProcess_batterysimulator extends PostProcess_common
                 "export_kwh"=>array("type"=>"newfeed", "default"=>"export_kwh", "engine"=>5, "short"=>"Enter grid export kWh feed name:"),
 
                 // More detailed kwh outputs
-                "solar_direct_kwh"=>array("type"=>"newfeed", "default"=>"solar_direct_kwh", "engine"=>5, "short"=>"Enter solar direct kwh feed name:"),
+                "solar_to_load_kwh"=>array("type"=>"newfeed", "default"=>"solar_to_load_kwh", "engine"=>5, "short"=>"Enter solar to load kwh feed name:"),
+                "solar_to_grid_kwh"=>array("type"=>"newfeed", "default"=>"solar_to_grid_kwh", "engine"=>5, "short"=>"Enter solar to grid kwh feed name:"),
                 "solar_to_battery_kwh"=>array("type"=>"newfeed", "default"=>"solar_to_battery_kwh", "engine"=>5, "short"=>"Enter solar to battery kwh feed name:"),
-                "battery_to_load_kwh"=>array("type"=>"newfeed", "default"=>"battery_to_load_kwh", "engine"=>5, "short"=>"Enter battery to load kwh feed name:")
+                "battery_to_load_kwh"=>array("type"=>"newfeed", "default"=>"battery_to_load_kwh", "engine"=>5, "short"=>"Enter battery to load kwh feed name:"),
+                "battery_to_grid_kwh"=>array("type"=>"newfeed", "default"=>"battery_to_grid_kwh", "engine"=>5, "short"=>"Enter battery to grid kwh feed name:"),
+                "grid_to_load_kwh"=>array("type"=>"newfeed", "default"=>"grid_to_load_kwh", "engine"=>5, "short"=>"Enter grid to load kwh feed name:"),
+                "grid_to_battery_kwh"=>array("type"=>"newfeed", "default"=>"grid_to_battery_kwh", "engine"=>5, "short"=>"Enter grid to battery kwh feed name:")
             )
         );
     }
@@ -111,9 +115,13 @@ class PostProcess_batterysimulator extends PostProcess_common
         if (!$model->output('export_kwh')) return array("success"=>false,"message"=>"Could not open export_kwh feed");
 
         // More detailed kwh outputs
-        if (!$model->output('solar_direct_kwh')) return array("success"=>false,"message"=>"Could not open solar_direct_kwh feed");
+        if (!$model->output('solar_to_load_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_load_kwh feed");
+        if (!$model->output('solar_to_grid_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_grid_kwh feed");
         if (!$model->output('solar_to_battery_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_battery_kwh feed");
         if (!$model->output('battery_to_load_kwh')) return array("success"=>false,"message"=>"Could not open battery_to_load_kwh feed");
+        if (!$model->output('battery_to_grid_kwh')) return array("success"=>false,"message"=>"Could not open battery_to_grid_kwh feed");
+        if (!$model->output('grid_to_load_kwh')) return array("success"=>false,"message"=>"Could not open grid_to_load_kwh feed");
+        if (!$model->output('grid_to_battery_kwh')) return array("success"=>false,"message"=>"Could not open grid_to_battery_kwh feed");
         
         // Check that intervals are the same
         if ($model->meta['solar']->interval != $model->meta['consumption']->interval) {
@@ -144,9 +152,13 @@ class PostProcess_batterysimulator extends PostProcess_common
         $discharge_kwh = 0;
         $import_kwh = 0;
         $export_kwh = 0;
-        $solar_direct_kwh = 0;
+        $solar_to_load_kwh = 0;
+        $solar_to_grid_kwh = 0;
         $solar_to_battery_kwh = 0;
         $battery_to_load_kwh = 0;
+        $battery_to_grid_kwh = 0;
+        $grid_to_load_kwh = 0;
+        $grid_to_battery_kwh = 0;
 
         // Get starting values
         $model->seek_to_time($start_time);    
@@ -154,9 +166,13 @@ class PostProcess_batterysimulator extends PostProcess_common
         if ($model->meta['discharge_kwh']->npoints) $discharge_kwh = $model->read('discharge_kwh',$discharge_kwh);
         if ($model->meta['import_kwh']->npoints) $import_kwh = $model->read('import_kwh',$import_kwh);
         if ($model->meta['export_kwh']->npoints) $export_kwh = $model->read('export_kwh',$export_kwh);
-        if ($model->meta['solar_direct_kwh']->npoints) $solar_direct_kwh = $model->read('solar_direct_kwh',$solar_direct_kwh);
+        if ($model->meta['solar_to_load_kwh']->npoints) $solar_to_load_kwh = $model->read('solar_to_load_kwh',$solar_to_load_kwh);
+        if ($model->meta['solar_to_grid_kwh']->npoints) $solar_to_grid_kwh = $model->read('solar_to_grid_kwh',$solar_to_grid_kwh);
         if ($model->meta['solar_to_battery_kwh']->npoints) $solar_to_battery_kwh = $model->read('solar_to_battery_kwh',$solar_to_battery_kwh);
         if ($model->meta['battery_to_load_kwh']->npoints) $battery_to_load_kwh = $model->read('battery_to_load_kwh',$battery_to_load_kwh);
+        if ($model->meta['battery_to_grid_kwh']->npoints) $battery_to_grid_kwh = $model->read('battery_to_grid_kwh',$battery_to_grid_kwh);
+        if ($model->meta['grid_to_load_kwh']->npoints) $grid_to_load_kwh = $model->read('grid_to_load_kwh',$grid_to_load_kwh);
+        if ($model->meta['grid_to_battery_kwh']->npoints) $grid_to_battery_kwh = $model->read('grid_to_battery_kwh',$grid_to_battery_kwh);
         
         if ($model->meta['soc']->npoints) {
             $soc = $model->read('soc',$soc);
@@ -255,19 +271,6 @@ class PostProcess_batterysimulator extends PostProcess_common
                 $discharge = $peak_discharge;
             }
 
-            // Calculate solar used directly by load
-            $solar_direct = $solar;
-            if ($solar_direct>$use) $solar_direct = $use;
-
-            // Calculate discharge to load (not exported to grid)
-            $discharge_to_load = $discharge;
-            if ($discharge_to_load>$use) $discharge_to_load = $use;
-
-            // Calculate solar to battery (not used directly by load or exported)
-            $solar_to_battery = $charge;
-            if ($solar_to_battery>$solar) $solar_to_battery = $solar;
-
-
             $balance = $solar - $use - $charge + $discharge;
             $import = 0;
             $export = 0;
@@ -276,7 +279,41 @@ class PostProcess_batterysimulator extends PostProcess_common
             } else {
                 $import = -1*$balance;
             }
-            
+
+            // -------------------------------------------------------------------------
+            // Energy flow decomposition
+            // -------------------------------------------------------------------------
+
+            // Solar to load: solar covers as much of load as possible
+            $solar_to_load = min($solar, $use);
+
+            // Solar to battery: if battery is charging, solar covers charge before grid does
+            $solar_to_battery = 0;
+            if ($charge > 0) {
+                $solar_to_battery = min($solar - $solar_to_load, $charge);
+            }
+
+            // Solar to grid: remainder of solar not used by load or battery
+            $solar_to_grid = $solar - $solar_to_load - $solar_to_battery;
+
+            // Battery to load and battery to grid
+            $battery_to_load = 0;
+            $battery_to_grid = 0;
+            if ($discharge > 0) {
+                $battery_to_load = min($discharge, $use - $solar_to_load);
+                $battery_to_grid = $discharge - $battery_to_load;
+            }
+
+            // Grid to load and grid to battery
+            $grid_to_load = 0;
+            $grid_to_battery = 0;
+            if ($import > 0) {
+                $grid_to_load = min($import, $use - $solar_to_load - $battery_to_load);
+                $grid_to_battery = min($import - $grid_to_load, $charge > 0 ? $charge - $solar_to_battery : 0);
+            }
+
+            // -------------------------------------------------------------------------
+
             $soc_prc = 100.0*$soc/$p->capacity;
 
             // turn off offpeak charge if we reach 
@@ -288,9 +325,13 @@ class PostProcess_batterysimulator extends PostProcess_common
             $discharge_kwh += ($discharge * $interval)/3600000.0;
             $import_kwh += ($import * $interval)/3600000.0;
             $export_kwh += ($export * $interval)/3600000.0;
-            $solar_direct_kwh += ($solar_direct * $interval)/3600000.0;
+            $solar_to_load_kwh += ($solar_to_load * $interval)/3600000.0;
+            $solar_to_grid_kwh += ($solar_to_grid * $interval)/3600000.0;
             $solar_to_battery_kwh += ($solar_to_battery * $interval)/3600000.0;
-            $battery_to_load_kwh += ($discharge_to_load * $interval)/3600000.0;
+            $battery_to_load_kwh += ($battery_to_load * $interval)/3600000.0;
+            $battery_to_grid_kwh += ($battery_to_grid * $interval)/3600000.0;
+            $grid_to_load_kwh += ($grid_to_load * $interval)/3600000.0;
+            $grid_to_battery_kwh += ($grid_to_battery * $interval)/3600000.0;
             
             // Battery feeds
             $model->write('soc',$soc_prc);
@@ -308,9 +349,13 @@ class PostProcess_batterysimulator extends PostProcess_common
             $model->write('export_kwh',$export_kwh);
 
             // More detailed kwh outputs
-            $model->write('solar_direct_kwh',$solar_direct_kwh);
+            $model->write('solar_to_load_kwh',$solar_to_load_kwh);
+            $model->write('solar_to_grid_kwh',$solar_to_grid_kwh);
             $model->write('solar_to_battery_kwh',$solar_to_battery_kwh);
             $model->write('battery_to_load_kwh',$battery_to_load_kwh);
+            $model->write('battery_to_grid_kwh',$battery_to_grid_kwh);
+            $model->write('grid_to_load_kwh',$grid_to_load_kwh);
+            $model->write('grid_to_battery_kwh',$grid_to_battery_kwh);
             
             $i++;
             if ($i%102400==0) echo ".";
