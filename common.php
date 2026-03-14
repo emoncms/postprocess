@@ -286,7 +286,7 @@ class ModelHelper
     public function read($key, $value)
     {
         $tmp = unpack("f", fread($this->fh[$key], 4));
-        if ($tmp[1] != null && !is_nan($tmp[1])) $value = $tmp[1];
+        if ($tmp[1] !== null && !is_nan($tmp[1])) $value = $tmp[1];
         return $value;
     }
 
