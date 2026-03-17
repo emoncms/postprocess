@@ -244,6 +244,10 @@ class ModelHelper
 
     private function load($key, $mode)
     {
+        $this->meta[$key] = false;
+        $this->fh[$key] = false;
+        $this->value[$key] = false;
+
         // check for valid key
         if (!isset($this->params->$key)) return false;
         $feedid = $this->params->$key;
@@ -268,12 +272,12 @@ class ModelHelper
 
     public function input($key)
     {
-        $result = $this->load($key, 'rb');
+        if (!$result = $this->load($key, 'rb')) return false;
         if ($this->start_time === false) $this->start_time = $this->meta[$key]->start_time;
         else if ($this->meta[$key]->start_time > $this->start_time) $this->start_time = $this->meta[$key]->start_time;
         if ($this->end_time === false) $this->end_time = $this->meta[$key]->end_time;
         else if ($this->meta[$key]->end_time < $this->end_time) $this->end_time = $this->meta[$key]->end_time;
-        return $result;
+        return true;
     }
 
     public function output($key)
@@ -285,6 +289,7 @@ class ModelHelper
 
     public function read($key, $value)
     {
+        if (!$this->fh[$key]) return $value;
         $tmp = unpack("f", fread($this->fh[$key], 4));
         if ($tmp[1] !== null && !is_nan($tmp[1])) $value = $tmp[1];
         return $value;
@@ -293,6 +298,7 @@ class ModelHelper
     public function seek_to_time($time)
     {
         foreach (array_keys($this->fh) as $key) {
+            if (!$this->meta[$key]) continue;
             $pos = floor(($time - $this->meta[$key]->start_time) / $this->meta[$key]->interval);
             fseek($this->fh[$key], $pos * 4);
         }

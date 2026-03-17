@@ -34,39 +34,112 @@ class PostProcess_solarbatterykwh extends PostProcess_common
 
     public function process($p)
     {
-        $result = $this->validate($p);
-        if (!$result["success"]) return $result;
+        // $result = $this->validate($p);
+        // if (!$result["success"]) return $result;
 
         $dir = $this->dir;
         $recalc = false;
 
         $model = new ModelHelper($dir,$p);
 
+
+        $has_solar = 0;
+        $has_use = 0;
+        $has_grid = 0;
+        $has_battery_power = 0;
+        $num_available_input_feeds = 0;
+
         // Input feeds
-        if (!$model->input('solar')) return array("success"=>false,"message"=>"Could not open solar feed");
-        if (!$model->input('use')) return array("success"=>false,"message"=>"Could not open use feed");
-        if (!$model->input('grid')) return array("success"=>false,"message"=>"Could not open grid feed");
-        if (!$model->input('battery_power')) return array("success"=>false,"message"=>"Could not open battery_power feed");
+        $has_solar = $model->input('solar') ? true : false;
+        $has_use = $model->input('use') ? true : false;
+        $has_grid = $model->input('grid') ? true : false;
+        $has_battery_power = $model->input('battery_power') ? true : false;
+
+        if ($has_solar) $num_available_input_feeds++;
+        if ($has_use) $num_available_input_feeds++;
+        if ($has_grid) $num_available_input_feeds++;
+        if ($has_battery_power) $num_available_input_feeds++;
+
+        $derive = false;
+        $assume_zero_solar = false;
+        $assume_zero_battery = false;
+
+        if ($num_available_input_feeds == 3) {
+            if (!$has_grid) $derive = "grid";
+            else if (!$has_use) $derive = "use";
+            else if (!$has_solar) $derive = "solar";
+            else if (!$has_battery_power) $derive = "battery";
+        }
+
+        else if ($num_available_input_feeds == 2) {
+            if ($has_solar && $has_battery_power) {
+                // We can't derive in this scenario, as both missing feeds (use and grid) are needed for derivation
+                return array("success"=>false,"message"=>"If only solar and battery_power feeds provided, can't derive use or grid feed");
+            }
+
+            if ($has_solar) {
+                if ($has_use) $derive = "grid";
+                else if ($has_grid) $derive = "use";
+                $assume_zero_battery = true; // if battery feed is missing, assume no battery power (solar-only mode)
+            }
+
+            if ($has_battery_power) {
+                if ($has_use) $derive = "grid";
+                else if ($has_grid) $derive = "use";
+                $assume_zero_solar = true; // if solar feed is missing, assume no solar generation (battery-only mode)
+            }
+        }
+
+        else if ($num_available_input_feeds == 1) {
+            if ($has_use) $derive = "grid";
+            else if ($has_grid) $derive = "use";
+            $assume_zero_solar = true;
+            $assume_zero_battery = true;
+        }
+
+
+
+        // 4 feeds (one more than needed)
+        // 3 feeds (can derive 4th)
+        // 2 feeds (need at least use or grid, second can be solar or battery_power)
+        // 1 feed (no point, can't derive the others)
+
+        if ($num_available_input_feeds < 2) {
+            return array("success"=>false,"message"=>"At least 2 input feeds required, found only ".$num_available_input_feeds);
+        }
+
+        if ($num_available_input_feeds == 2) {
+            if (!$has_use && !$has_grid) {
+                return array("success"=>false,"message"=>"If only 2 input feeds provided, one must be use or grid feed");
+            }
+            if (!$has_solar && !$has_battery_power) {
+                return array("success"=>false,"message"=>"If only 2 input feeds provided, one must be solar or battery_power feed");
+            }
+        }
 
         // Output feeds
-        if (!$model->output('solar_to_load_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_load_kwh feed");
-        if (!$model->output('solar_to_grid_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_grid_kwh feed");
-        if (!$model->output('solar_to_battery_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_battery_kwh feed");
-        if (!$model->output('battery_to_load_kwh')) return array("success"=>false,"message"=>"Could not open battery_to_load_kwh feed");
-        if (!$model->output('battery_to_grid_kwh')) return array("success"=>false,"message"=>"Could not open battery_to_grid_kwh feed");
-        if (!$model->output('grid_to_load_kwh')) return array("success"=>false,"message"=>"Could not open grid_to_load_kwh feed");
-        if (!$model->output('grid_to_battery_kwh')) return array("success"=>false,"message"=>"Could not open grid_to_battery_kwh feed");
+        $solar_to_load_kwh_feed = $model->output('solar_to_load_kwh');
+        $solar_to_grid_kwh_feed = $model->output('solar_to_grid_kwh');
+        $solar_to_battery_kwh_feed = $model->output('solar_to_battery_kwh');
+        $battery_to_load_kwh_feed = $model->output('battery_to_load_kwh');
+        $battery_to_grid_kwh_feed = $model->output('battery_to_grid_kwh');
+        $grid_to_load_kwh_feed = $model->output('grid_to_load_kwh');
+        $grid_to_battery_kwh_feed = $model->output('grid_to_battery_kwh');
 
-        // Check that intervals are the same across all input feeds
-        $interval = $model->meta['solar']->interval;
-        if ($model->meta['use']->interval != $interval) {
-            return array("success"=>false,"message"=>"interval of use feed does not match solar feed");
+        // Get interval from first available input feed
+        $interval = null;
+        foreach (['solar', 'use', 'grid', 'battery_power'] as $feed) {
+            if ($model->meta[$feed] ?? false) {
+                $interval = $model->meta[$feed]->interval;
+                break;
+            }
         }
-        if ($model->meta['grid']->interval != $interval) {
-            return array("success"=>false,"message"=>"interval of grid feed does not match solar feed");
-        }
-        if ($model->meta['battery_power']->interval != $interval) {
-            return array("success"=>false,"message"=>"interval of battery_power feed does not match solar feed");
+
+        // Check all available feeds have the same interval
+        foreach (['solar', 'use', 'grid', 'battery_power'] as $feed) {
+            if (($model->meta[$feed] ?? false) && $model->meta[$feed]->interval != $interval) {
+                return array("success"=>false,"message"=>"interval of {$feed} feed does not match other feeds");
+            }
         }
 
         $start_time = $model->start_time;
@@ -86,7 +159,7 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         $solar = 0;
         $use = 0;
         $grid = 0;
-        $battery_power = 0;
+        $battery = 0;
 
         $solar_to_load_kwh = 0;
         $solar_to_grid_kwh = 0;
@@ -117,15 +190,25 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             $solar         = $model->read('solar',$solar);
             $use           = $model->read('use',$use);
             $grid          = $model->read('grid',$grid);
-            $battery_power = $model->read('battery_power',$battery_power);
+            $battery       = $model->read('battery_power',$battery);
 
             // Limits
             if ($solar < 0) $solar = 0; // negative solar doesn't make sense
             if ($use < 0) $use = 0; // negative use doesn't make sense
 
+            if ($assume_zero_solar) $solar = 0;
+            if ($assume_zero_battery) $battery = 0;
 
-            // Override use via conservation of energy
-            $grid = $use - $solar - $battery_power;
+            if ($derive === "grid") {
+                $grid = $use - $solar - $battery;
+            } else if ($derive === "use") {
+                $use = $solar + $battery + $grid;
+            } else if ($derive === "solar") {
+                $solar = $use - $battery - $grid;
+            } else if ($derive === "battery") {
+                $battery = $use - $solar - $grid;
+            }
+
 
             $import_power = ($grid > 0) ? $grid : 0;
 
@@ -139,8 +222,8 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             // Solar to battery: if battery is charging (battery_power < 0), solar covers
             // charge before grid does
             $solar_to_battery = 0;
-            if ($battery_power < 0) {
-                $solar_to_battery = min($solar - $solar_to_load, -$battery_power);
+            if ($battery < 0) {
+                $solar_to_battery = min($solar - $solar_to_load, -$battery);
             }
 
             // Solar to grid: remainder of solar not used by load or battery
@@ -149,9 +232,9 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             // Battery to load and battery to grid (battery_power > 0 = discharging)
             $battery_to_load = 0;
             $battery_to_grid = 0;
-            if ($battery_power > 0) {
-                $battery_to_load = min($battery_power, $use - $solar_to_load);
-                $battery_to_grid = $battery_power - $battery_to_load;
+            if ($battery > 0) {
+                $battery_to_load = min($battery, $use - $solar_to_load);
+                $battery_to_grid = $battery - $battery_to_load;
             }
 
             // Grid to load and grid to battery
@@ -159,7 +242,7 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             $grid_to_battery = 0;
             if ($import_power > 0) {
                 $grid_to_load = min($import_power, $use - $solar_to_load - $battery_to_load);
-                $grid_to_battery = min($import_power - $grid_to_load, $battery_power < 0 ? -$battery_power - $solar_to_battery : 0);
+                $grid_to_battery = min($import_power - $grid_to_load, $battery < 0 ? -$battery - $solar_to_battery : 0);
             }
 
             // -------------------------------------------------------------------------
@@ -186,6 +269,10 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         echo "\n";
 
         $buffersize = $model->save_all();
-        return array("success"=>true, "message"=>"bytes written: ".($buffersize/1024)." kb");
+        return array(
+            "success"=>true, 
+            "message"=>"bytes written: ".($buffersize/1024)." kb",
+            "num_available_input_feeds"=>$num_available_input_feeds
+        );
     }
 }
