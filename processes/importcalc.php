@@ -8,9 +8,9 @@ class PostProcess_importcalc extends PostProcess_common
             "group"=>"Solar",
             "description"=>"Calculate grid import from consumption and generation",
             "settings"=>array(
-                "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
-                "generation"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
-                "output"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter import feed name:", "nameappend"=>"")
+                "use"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption power feed:"),
+                "gen"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar generation power feed:"),
+                "out"=>array("type"=>"newfeed", "engine"=>5, "short"=>"Enter import feed name:", "nameappend"=>"")
             )
         );
     }

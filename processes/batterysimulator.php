@@ -19,6 +19,9 @@ class PostProcess_batterysimulator extends PostProcess_common
                 "solar"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar feed:"),
                 "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption feed:"),
 
+                // Boolean option to zero solar generation
+                "zero_solar"=>array("type"=>"value", "default"=>0, "short"=>"Zero solar generation (1 = on, 0 = off)"),
+
                 // ----------------------------------------------------------------------------------------------
                 // Battery parameters
                 "capacity"=>array("type"=>"value", "default"=>4.4, "short"=>"Usable battery capacity in kWh"),
@@ -198,6 +201,11 @@ class PostProcess_batterysimulator extends PostProcess_common
             
             $solar = $model->read('solar',$solar);
             $use = $model->read('consumption',$use);
+
+            // Zero solar if option enabled
+            if ($p->zero_solar) {
+                $solar = 0;
+            }
             
             // Limits
             if ($use<0) $use = 0;
