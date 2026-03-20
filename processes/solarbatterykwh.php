@@ -145,14 +145,18 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         $start_time = $model->start_time;
         $end_time = $model->end_time;
 
+        // Switch to 15 minute intervals for the output feeds.
+        $output_interval = 900;
+        $output_start_time = floor($start_time / $output_interval) * $output_interval;
+
         // Note: implementation only allows for same meta for all output feeds
-        $model->set_output_meta($start_time,$interval);
+        $model->set_output_meta($output_start_time+$output_interval,$output_interval);
 
         // Process new data since last run
-        if (!$recalc) $start_time = $model->meta['solar_to_load_kwh']->end_time-$interval;
+        if (!$recalc) $start_time = $model->meta['solar_to_load_kwh']->end_time-$output_interval;
         if ($start_time<$model->start_time) $start_time = $model->start_time;
 
-        if ($start_time==$end_time) {
+        if ($start_time>=$end_time) {
             return array("success"=>true,"message"=>"Nothing to do, data already up to date");
         }
 
@@ -183,6 +187,8 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         $model->seek_to_time($start_time);
 
         $power_to_kwh = $interval / 3600000.0; // conversion factor from W to kWh for given interval
+
+        $slot = floor($start_time / $output_interval) * $output_interval;
 
         $i=0;
         for ($time=$start_time; $time<$end_time; $time+=$interval)
@@ -255,13 +261,18 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             $grid_to_load_kwh     += ($grid_to_load     * $power_to_kwh);
             $grid_to_battery_kwh  += ($grid_to_battery  * $power_to_kwh);
 
-            $model->write('solar_to_load_kwh',$solar_to_load_kwh);
-            $model->write('solar_to_grid_kwh',$solar_to_grid_kwh);
-            $model->write('solar_to_battery_kwh',$solar_to_battery_kwh);
-            $model->write('battery_to_load_kwh',$battery_to_load_kwh);
-            $model->write('battery_to_grid_kwh',$battery_to_grid_kwh);
-            $model->write('grid_to_load_kwh',$grid_to_load_kwh);
-            $model->write('grid_to_battery_kwh',$grid_to_battery_kwh);
+            $last_slot = $slot;
+            $slot = floor($time / $output_interval) * $output_interval;
+
+            if ($slot != $last_slot) {
+                $model->write('solar_to_load_kwh',$solar_to_load_kwh);
+                $model->write('solar_to_grid_kwh',$solar_to_grid_kwh);
+                $model->write('solar_to_battery_kwh',$solar_to_battery_kwh);
+                $model->write('battery_to_load_kwh',$battery_to_load_kwh);
+                $model->write('battery_to_grid_kwh',$battery_to_grid_kwh);
+                $model->write('grid_to_load_kwh',$grid_to_load_kwh);
+                $model->write('grid_to_battery_kwh',$grid_to_battery_kwh);
+            }
 
             $i++;
             if ($i%102400==0) echo ".";
