@@ -42,7 +42,6 @@ class PostProcess_solarbatterykwh extends PostProcess_common
 
         $model = new ModelHelper($dir,$p);
 
-
         $has_solar = 0;
         $has_use = 0;
         $has_grid = 0;
@@ -153,7 +152,7 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         $model->set_output_meta($output_start_time+$output_interval,$output_interval);
 
         // Process new data since last run
-        if (!$recalc) $start_time = $model->meta['solar_to_load_kwh']->end_time-$output_interval;
+        if (!$recalc) $start_time = $model->meta['grid_to_load_kwh']->end_time-$output_interval;
         if ($start_time<$model->start_time) $start_time = $model->start_time;
 
         if ($start_time>=$end_time) {
@@ -190,6 +189,10 @@ class PostProcess_solarbatterykwh extends PostProcess_common
 
         $slot = floor($start_time / $output_interval) * $output_interval;
 
+        // return array("success"=>true,"message"=>"Processing data from ".date('Y-m-d H:i:s',$start_time)." to ".date('Y-m-d H:i:s',$end_time)." with interval ".$interval." seconds, deriving missing feed: ".($derive ?? "none").", assuming zero solar: ".($assume_zero_solar ? "yes" : "no").", assuming zero battery: ".($assume_zero_battery ? "yes" : "no")."...");
+
+        $more_to_process = false;
+        $process_start_time = microtime(true);
         $i=0;
         for ($time=$start_time; $time<$end_time; $time+=$interval)
         {
@@ -275,15 +278,28 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             }
 
             $i++;
-            if ($i%102400==0) echo ".";
+            if ($i%102400==0) {
+                echo ".";
+                // If more than 20 seconds have passed exit early
+                if (microtime(true) - $process_start_time > 10) {
+                    $more_to_process = true;
+                    break;
+                }
+            }
         }
         echo "\n";
 
         $buffersize = $model->save_all();
+
+        $elapsed_time = microtime(true) - $process_start_time;
+
         return array(
             "success"=>true, 
             "message"=>"bytes written: ".($buffersize/1024)." kb",
-            "num_available_input_feeds"=>$num_available_input_feeds
+            "num_available_input_feeds"=>$num_available_input_feeds,
+            "derived_feed"=>$derive ?? "none",
+            "elapsed_time"=>number_format($elapsed_time, 2)." seconds",
+            "more_to_process"=>$more_to_process
         );
     }
 }
