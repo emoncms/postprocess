@@ -75,8 +75,8 @@ class PostProcess_batterysimulator extends PostProcess_common
 
     public function process($p)
     {
-        $result = $this->validate($p);
-        if (!$result["success"]) return $result;
+        // $result = $this->validate($p);
+        // if (!$result["success"]) return $result;
 
         $dir = $this->dir;
         $recalc = false;
@@ -98,6 +98,8 @@ class PostProcess_batterysimulator extends PostProcess_common
         
         $model = new ModelHelper($dir,$p);
 
+        $optional = array();
+
         // Input feeds
         if (!$model->input('solar')) return array("success"=>false,"message"=>"Could not open solar feed");
         if (!$model->input('consumption')) return array("success"=>false,"message"=>"Could not open consumption feed");
@@ -105,26 +107,28 @@ class PostProcess_batterysimulator extends PostProcess_common
         // Battery feeds
         if (!$model->output('soc')) return array("success"=>false,"message"=>"Could not open soc feed");
         if (!$model->output('power')) return array("success"=>false,"message"=>"Could not open battery_power feed");
-        if (!$model->output('charge')) return array("success"=>false,"message"=>"Could not open charge feed");
-        if (!$model->output('charge_kwh')) return array("success"=>false,"message"=>"Could not open charge_kwh feed");
-        if (!$model->output('discharge')) return array("success"=>false,"message"=>"Could not open discharge feed");
-        if (!$model->output('discharge_kwh')) return array("success"=>false,"message"=>"Could not open discharge_kwh feed");
+
+        // Optional charge/discharge feeds - if they don't exist they will just be skipped over in the output
+        $optional['charge'] = $model->output('charge');
+        $optional['discharge'] = $model->output('discharge');
+        $optional['charge_kwh'] = $model->output('charge_kwh');
+        $optional['discharge_kwh'] = $model->output('discharge_kwh');
 
         // Grid feeds
         if (!$model->output('grid')) return array("success"=>false,"message"=>"Could not open grid feed");
-        if (!$model->output('import')) return array("success"=>false,"message"=>"Could not open import feed");
-        if (!$model->output('export')) return array("success"=>false,"message"=>"Could not open export feed");
-        if (!$model->output('import_kwh')) return array("success"=>false,"message"=>"Could not open import_kwh feed");
-        if (!$model->output('export_kwh')) return array("success"=>false,"message"=>"Could not open export_kwh feed");
+        $optional['import'] = $model->output('import');
+        $optional['export'] = $model->output('export');
+        $optional['import_kwh'] = $model->output('import_kwh');
+        $optional['export_kwh'] = $model->output('export_kwh');
 
         // More detailed kwh outputs
-        if (!$model->output('solar_to_load_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_load_kwh feed");
-        if (!$model->output('solar_to_grid_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_grid_kwh feed");
-        if (!$model->output('solar_to_battery_kwh')) return array("success"=>false,"message"=>"Could not open solar_to_battery_kwh feed");
-        if (!$model->output('battery_to_load_kwh')) return array("success"=>false,"message"=>"Could not open battery_to_load_kwh feed");
-        if (!$model->output('battery_to_grid_kwh')) return array("success"=>false,"message"=>"Could not open battery_to_grid_kwh feed");
-        if (!$model->output('grid_to_load_kwh')) return array("success"=>false,"message"=>"Could not open grid_to_load_kwh feed");
-        if (!$model->output('grid_to_battery_kwh')) return array("success"=>false,"message"=>"Could not open grid_to_battery_kwh feed");
+        $optional['solar_to_load_kwh'] = $model->output('solar_to_load_kwh');
+        $optional['solar_to_grid_kwh'] = $model->output('solar_to_grid_kwh');
+        $optional['solar_to_battery_kwh'] = $model->output('solar_to_battery_kwh');
+        $optional['battery_to_load_kwh'] = $model->output('battery_to_load_kwh');
+        $optional['battery_to_grid_kwh'] = $model->output('battery_to_grid_kwh');
+        $optional['grid_to_load_kwh'] = $model->output('grid_to_load_kwh');
+        $optional['grid_to_battery_kwh'] = $model->output('grid_to_battery_kwh');
         
         // Check that intervals are the same
         if ($model->meta['solar']->interval != $model->meta['consumption']->interval) {
@@ -165,17 +169,17 @@ class PostProcess_batterysimulator extends PostProcess_common
 
         // Get starting values
         $model->seek_to_time($start_time);    
-        if ($model->meta['charge_kwh']->npoints) $charge_kwh = $model->read('charge_kwh',$charge_kwh);
-        if ($model->meta['discharge_kwh']->npoints) $discharge_kwh = $model->read('discharge_kwh',$discharge_kwh);
-        if ($model->meta['import_kwh']->npoints) $import_kwh = $model->read('import_kwh',$import_kwh);
-        if ($model->meta['export_kwh']->npoints) $export_kwh = $model->read('export_kwh',$export_kwh);
-        if ($model->meta['solar_to_load_kwh']->npoints) $solar_to_load_kwh = $model->read('solar_to_load_kwh',$solar_to_load_kwh);
-        if ($model->meta['solar_to_grid_kwh']->npoints) $solar_to_grid_kwh = $model->read('solar_to_grid_kwh',$solar_to_grid_kwh);
-        if ($model->meta['solar_to_battery_kwh']->npoints) $solar_to_battery_kwh = $model->read('solar_to_battery_kwh',$solar_to_battery_kwh);
-        if ($model->meta['battery_to_load_kwh']->npoints) $battery_to_load_kwh = $model->read('battery_to_load_kwh',$battery_to_load_kwh);
-        if ($model->meta['battery_to_grid_kwh']->npoints) $battery_to_grid_kwh = $model->read('battery_to_grid_kwh',$battery_to_grid_kwh);
-        if ($model->meta['grid_to_load_kwh']->npoints) $grid_to_load_kwh = $model->read('grid_to_load_kwh',$grid_to_load_kwh);
-        if ($model->meta['grid_to_battery_kwh']->npoints) $grid_to_battery_kwh = $model->read('grid_to_battery_kwh',$grid_to_battery_kwh);
+        $charge_kwh = $model->read('charge_kwh',$charge_kwh);
+        $discharge_kwh = $model->read('discharge_kwh',$discharge_kwh);
+        $import_kwh = $model->read('import_kwh',$import_kwh);
+        $export_kwh = $model->read('export_kwh',$export_kwh);
+        $solar_to_load_kwh = $model->read('solar_to_load_kwh',$solar_to_load_kwh);
+        $solar_to_grid_kwh = $model->read('solar_to_grid_kwh',$solar_to_grid_kwh);
+        $solar_to_battery_kwh = $model->read('solar_to_battery_kwh',$solar_to_battery_kwh);
+        $battery_to_load_kwh = $model->read('battery_to_load_kwh',$battery_to_load_kwh);
+        $battery_to_grid_kwh = $model->read('battery_to_grid_kwh',$battery_to_grid_kwh);
+        $grid_to_load_kwh = $model->read('grid_to_load_kwh',$grid_to_load_kwh);
+        $grid_to_battery_kwh = $model->read('grid_to_battery_kwh',$grid_to_battery_kwh);
         
         if ($model->meta['soc']->npoints) {
             $soc = $model->read('soc',$soc);
