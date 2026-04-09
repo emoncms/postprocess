@@ -19,8 +19,9 @@ class PostProcess_batterysimulator extends PostProcess_common
                 "solar"=>array("type"=>"feed", "engine"=>5, "short"=>"Select solar feed:"),
                 "consumption"=>array("type"=>"feed", "engine"=>5, "short"=>"Select consumption feed:"),
 
-                // Boolean option to zero solar generation
-                "zero_solar"=>array("type"=>"value", "default"=>0, "short"=>"Zero solar generation (1 = on, 0 = off)"),
+                // Overall system configuration
+                "has_solar"=>array("type"=>"value", "default"=>1, "short"=>"Set to 0 if no solar, will zero solar output"),
+                "has_battery"=>array("type"=>"value", "default"=>1, "short"=>"Set to 0 if no battery, will disable battery"),
 
                 // ----------------------------------------------------------------------------------------------
                 // Battery parameters
@@ -145,7 +146,7 @@ class PostProcess_batterysimulator extends PostProcess_common
         $model->set_output_meta($start_time,$interval);
         
         // Process new data since last run
-        if (!$recalc) $start_time = $model->meta['soc']->end_time-$interval;
+        if (!$recalc) $start_time = $model->meta['grid']->end_time-$interval;
         if ($start_time<$model->start_time) $start_time = $model->start_time;
         
         if ($start_time==$end_time) {
@@ -207,82 +208,86 @@ class PostProcess_batterysimulator extends PostProcess_common
             $use = $model->read('consumption',$use);
 
             // Zero solar if option enabled
-            if ($p->zero_solar) {
+            if ($p->has_solar==0) {
                 $solar = 0;
             }
             
             // Limits
             if ($use<0) $use = 0;
             if ($solar<0) $solar = 0;
-
-            // Starts the off-peak charge session
-            if ($p->offpeak_soc_target>0 && $hour==$p->offpeak_start && $last_hour!=$hour && !$charging_offpeak) {
-                $charging_offpeak = true;
-            }
-
-            // Peak export enabled and we are in the peak export window
-            $peak_export = false;
-            if ($p->peak_export_enabled && $hour>=$p->peak_export_start && $hour<$p->peak_export_end) {
-                $peak_export = true;
-            }
             
             $charge = 0;
             $discharge = 0;
 
-            if (!$peak_export) 
-            {
-                // Charging when there is excess solar 
-                if ($solar>$use) {
-                    $charge = $solar-$use;
-                }
-                // Offpeak / night time charge
-                if ($charging_offpeak) {
-                    $charge = $p->max_charge_rate;
-                }
-                
-                if ($charge>0) {
-                    if ($charge>$p->max_charge_rate) $charge = $p->max_charge_rate;
-                    $charge_after_loss = $charge * $single_trip_efficiency;
-                    $soc_inc = ($charge_after_loss * $interval) / 3600000.0;
-                    // Upper limit
-                    if (($soc+$soc_inc)>=$p->capacity) {
-                        $soc_inc = $p->capacity - $soc;
-                        $charge_after_loss = ($soc_inc * 3600000.0) / $interval;
-                        $charge = $charge_after_loss / $single_trip_efficiency;
-                    }        
-                    $soc += $soc_inc;
+            // Overall enable/disable battery
+            if ($p->has_battery) {
+
+                // Starts the off-peak charge session
+                if ($p->offpeak_soc_target>0 && $hour==$p->offpeak_start && $last_hour!=$hour && !$charging_offpeak) {
+                    $charging_offpeak = true;
                 }
 
-                // Discharge when use is more than solar
+                // Peak export enabled and we are in the peak export window
+                $peak_export = false;
+                if ($p->peak_export_enabled && $hour>=$p->peak_export_start && $hour<$p->peak_export_end) {
+                    $peak_export = true;
+                }
 
-                if (!$peak_export && $hour>=$p->discharge_start && $hour<$p->discharge_end) {
-                    if ($use>$solar && $charge==0) {
-                        $discharge = $use-$solar;
-                        if ($discharge>$p->max_discharge_rate) $discharge = $p->max_discharge_rate;
-                        $discharge_before_loss = $discharge / $single_trip_efficiency;
-                        $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
-                        // Lower limit
-                        if (($soc-$soc_dec)<=0) {
-                            $soc_dec = $soc;
-                            $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
-                            $discharge = $discharge_before_loss * $single_trip_efficiency;
-                        }
-                        $soc -= $soc_dec;
+                if (!$peak_export) 
+                {
+                    // Charging when there is excess solar 
+                    if ($solar>$use) {
+                        $charge = $solar-$use;
                     }
-                }
+                    // Offpeak / night time charge
+                    if ($charging_offpeak) {
+                        $charge = $p->max_charge_rate;
+                    }
                     
-            // Peak export: discharge at max rate during peak window regardless of consumption
-            } else {
-                $peak_discharge = $p->max_discharge_rate;
-                $discharge_before_loss = $peak_discharge / $single_trip_efficiency;
-                $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
-                if (($soc - $soc_dec) <= 0) {
-                    $soc_dec = $soc;
-                    $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
-                    $peak_discharge = $discharge_before_loss * $single_trip_efficiency;
+                    if ($charge>0) {
+                        if ($charge>$p->max_charge_rate) $charge = $p->max_charge_rate;
+                        $charge_after_loss = $charge * $single_trip_efficiency;
+                        $soc_inc = ($charge_after_loss * $interval) / 3600000.0;
+                        // Upper limit
+                        if (($soc+$soc_inc)>=$p->capacity) {
+                            $soc_inc = $p->capacity - $soc;
+                            $charge_after_loss = ($soc_inc * 3600000.0) / $interval;
+                            $charge = $charge_after_loss / $single_trip_efficiency;
+                        }        
+                        $soc += $soc_inc;
+                    }
+
+                    // Discharge when use is more than solar
+
+                    if (!$peak_export && $hour>=$p->discharge_start && $hour<$p->discharge_end) {
+                        if ($use>$solar && $charge==0) {
+                            $discharge = $use-$solar;
+                            if ($discharge>$p->max_discharge_rate) $discharge = $p->max_discharge_rate;
+                            $discharge_before_loss = $discharge / $single_trip_efficiency;
+                            $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
+                            // Lower limit
+                            if (($soc-$soc_dec)<=0) {
+                                $soc_dec = $soc;
+                                $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
+                                $discharge = $discharge_before_loss * $single_trip_efficiency;
+                            }
+                            $soc -= $soc_dec;
+                        }
+                    }
+                        
+                // Peak export: discharge at max rate during peak window regardless of consumption
+                } else {
+                    $peak_discharge = $p->max_discharge_rate;
+                    $discharge_before_loss = $peak_discharge / $single_trip_efficiency;
+                    $soc_dec = ($discharge_before_loss * $interval) / 3600000.0;
+                    if (($soc - $soc_dec) <= 0) {
+                        $soc_dec = $soc;
+                        $discharge_before_loss = ($soc_dec * 3600000.0) / $interval;
+                        $peak_discharge = $discharge_before_loss * $single_trip_efficiency;
+                    }
+                    $soc -= $soc_dec;
+                    $discharge = $peak_discharge;
                 }
-                $soc -= $soc_dec;
-                $discharge = $peak_discharge;
             }
             
             // -------------------------------------------------------------------------
