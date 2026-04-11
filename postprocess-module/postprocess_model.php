@@ -27,6 +27,12 @@ class PostProcess
         $this->mysqli = $mysqli;
         $this->redis = $redis;
         $this->feed = $feed;
+
+        global $settings;
+        // set phpfina datadir if set in settings
+        if (isset($settings['feed']['phpfina']['datadir'])) {
+            $this->datadir = $settings['feed']['phpfina']['datadir'];
+        }
     }
 
     public function add($userid,$params)
