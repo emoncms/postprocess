@@ -20,6 +20,8 @@ class PostProcess_solarbatterykwh extends PostProcess_common
                 "grid"=>array("type"=>"feed", "engine"=>5, "short"=>"Select grid power feed (W, +import/-export):"),
                 "battery"=>array("type"=>"feed", "engine"=>5, "short"=>"Select battery power feed (W, +discharge/-charge):"),
 
+                "strategy"=>array("type"=>"value", "default"=>"Solar first", "short"=>"Select strategy for allocating solar and battery power to load when both are available:"),
+
                 // Output kWh flow feeds
                 "solar_to_load_kwh"=>array("type"=>"newfeed", "default"=>"solar_to_load_kwh", "engine"=>5, "short"=>"Enter solar to load kWh feed name:"),
                 "solar_to_grid_kwh"=>array("type"=>"newfeed", "default"=>"solar_to_grid_kwh", "engine"=>5, "short"=>"Enter solar to grid kWh feed name:"),
@@ -49,6 +51,14 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         $has_grid = 0;
         $has_battery = 0;
         $num_available_input_feeds = 0;
+
+        if ($p->strategy == "Solar first") {
+            $solar_first = true;
+        } else if ($p->strategy == "Battery first") {
+            $solar_first = false;
+        } else {
+            return array("success"=>false,"message"=>"Invalid strategy value");
+        }
 
         // Input feeds
         // The input method also determines the most recent start time and earliest end time across the feeds
@@ -242,29 +252,54 @@ class PostProcess_solarbatterykwh extends PostProcess_common
 
             $import_power = ($grid > 0) ? $grid : 0;
 
+            $battery_to_load = 0;
+            $battery_to_grid = 0;
+
             // -------------------------------------------------------------------------
             // Energy flow decomposition
             // -------------------------------------------------------------------------
+            if ($solar_first) {
+                // Solar first strategy: solar is allocated to load and battery before grid power is used
 
-            // Solar to load: solar covers as much of load as possible
-            $solar_to_load = min($solar, $use);
+                // Solar to load: solar covers as much of load as possible
+                $solar_to_load = min($solar, $use);
 
-            // Solar to battery: if battery is charging (battery < 0), solar covers
-            // charge before grid does
-            $solar_to_battery = 0;
-            if ($battery < 0) {
-                $solar_to_battery = min($solar - $solar_to_load, -$battery);
-            }
+                // Solar to battery: if battery is charging (battery < 0), solar covers
+                // charge before grid does
+                $solar_to_battery = 0;
+                if ($battery < 0) {
+                    $solar_to_battery = min($solar - $solar_to_load, -$battery);
+                }
 
-            // Solar to grid: remainder of solar not used by load or battery
-            $solar_to_grid = $solar - $solar_to_load - $solar_to_battery;
+                // Solar to grid: remainder of solar not used by load or battery
+                $solar_to_grid = $solar - $solar_to_load - $solar_to_battery;
 
-            // Battery to load and battery to grid (battery > 0 = discharging)
-            $battery_to_load = 0;
-            $battery_to_grid = 0;
-            if ($battery > 0) {
-                $battery_to_load = min($battery, $use - $solar_to_load);
-                $battery_to_grid = $battery - $battery_to_load;
+                // Battery to load and battery to grid (battery > 0 = discharging)
+                if ($battery > 0) {
+                    $battery_to_load = min($battery, $use - $solar_to_load);
+                    $battery_to_grid = $battery - $battery_to_load;
+                }
+                
+            } else {
+                // Battery first strategy: battery is allocated to load and grid before solar is used
+                // Battery to load and battery to grid (battery > 0 = discharging)
+                if ($battery > 0) {
+                    $battery_to_load = min($battery, $use);
+                    $battery_to_grid = $battery - $battery_to_load;
+                }
+
+                // Solar to load: solar covers remaining load after battery discharge
+                $solar_to_load = min($solar, max($use - $battery_to_load, 0));
+
+                // Solar to battery: if battery is charging (battery < 0), solar covers
+                // charge after grid does
+                $solar_to_battery = 0;
+                if ($battery < 0) {
+                    $solar_to_battery = min($solar - $solar_to_load, -$battery);
+                }
+
+                // Solar to grid: remainder of solar not used by load or battery
+                $solar_to_grid = $solar - $solar_to_load - $solar_to_battery;
             }
 
             // Grid to load and grid to battery
