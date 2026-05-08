@@ -95,7 +95,7 @@ function postprocess_controller()
         $log_filename = $settings['log']['location'] . "/postprocess.log";
         if (file_exists($log_filename)) {
             ob_start();
-            passthru("tail -30 $log_filename");
+            passthru("tail -30 " . escapeshellarg($log_filename));
             return trim(ob_get_clean());
         } else return "no logging yet available";
     }
