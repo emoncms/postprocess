@@ -338,11 +338,7 @@ class PostProcess
 
         // Check if service-runner.service is running
         if ($this->check_service_runner()) {
-            global $settings, $linked_modules_dir;
-            // Ask service-runner to run postprocess script
-            $update_script = "$linked_modules_dir/postprocess/postprocess.sh";
-            $update_logfile = $settings['log']['location'] . "/postprocess.log";
-            $this->redis->rpush("service-runner", "$update_script>$update_logfile");
+            $this->redis->rpush("service-runner", json_encode(["run" => "postprocess-run", "args" => [], "log" => "postprocess"]));
 
             return array('success' => true, 'message' => "Process added to queue");
         } else {
