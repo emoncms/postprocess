@@ -1,6 +1,8 @@
 <?php global $path; ?>
-<script src="<?php echo $path; ?>Lib/vue.min.js"></script>
-<script src="<?php echo $path; ?>Modules/feed/feed.js"></script>
+<?php
+load_js("Lib/js/vue.global.prod-3.5.22.min.js");
+load_js("Modules/feed/feed.js");
+?>
 <br>
 
 <h3>Post Processor</h3>
@@ -157,4 +159,4 @@
 <script>
     var processes = <?php echo json_encode($processes); ?>;
 </script>
-<script type="text/javascript" src="<?php echo $path; ?>Modules/postprocess/view.js?v=13"></script>
+<?php load_js("Modules/postprocess/view.js"); ?>

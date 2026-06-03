@@ -6,24 +6,25 @@ for (var key in processes) {
     processes_by_group[group][key] = processes[key];
 }
 
-var app = new Vue({
-    el: '#app',
-    data: {
-        feeds_by_id: {},
-        feeds_by_tag: {},
-        processes: processes,
-        processes_by_group: processes_by_group,
-        process_list: [],
-        new_process_select: 'none',
-        new_process: {},
-        new_feed: {},
-        new_process_mode: 'all',
-        new_process_start: 0,
-        new_process_create: false,
-        mode: 'create',
-        selected_process: -1,
-        formula_feed_finder_id: 'none',
-        new_process_error: ''
+var app = Vue.createApp({
+    data() {
+        return {
+            feeds_by_id: {},
+            feeds_by_tag: {},
+            processes: processes,
+            processes_by_group: processes_by_group,
+            process_list: [],
+            new_process_select: 'none',
+            new_process: {},
+            new_feed: {},
+            new_process_mode: 'all',
+            new_process_start: 0,
+            new_process_create: false,
+            mode: 'create',
+            selected_process: -1,
+            formula_feed_finder_id: 'none',
+            new_process_error: ''
+        };
     },
     methods: {
         new_process_selected: function() {
@@ -276,7 +277,7 @@ var app = new Vue({
             }
         }
     }
-});
+}).mount('#app');
 
 reload_feeds();
 load_process_list();
