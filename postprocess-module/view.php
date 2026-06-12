@@ -95,7 +95,9 @@ load_js("Modules/feed/feed.js");
                             <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
                             <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
-                                <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}</option>
+                                <template v-for="(feed,feedid) in tag">
+                                    <option v-if="feed.engine==5" v-bind:value="feedid">{{feed.name}}</option>
+                                </template>
                             </optgroup>
                         </select>
                         <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].tag" placeholder="Tag" style="width:100px" @change="new_process_update"/>
@@ -115,7 +117,9 @@ load_js("Modules/feed/feed.js");
                         <select style="width:150px" v-model="formula_feed_finder_id" @change="formula_feed_finder_change">
                             <option value="none">SELECT FEED:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
-                                <option v-for="(feed,feedid) in tag" v-bind:value="feedid" v-if="feed.engine==5">{{feed.name}}: f{{feed.id}}</option>
+                                <template v-for="(feed,feedid) in tag">
+                                    <option v-if="feed.engine==5" v-bind:value="feedid">{{feed.name}}: f{{feed.id}}</option>
+                                </template>
                             </optgroup>
                         </select>
                     </div>
