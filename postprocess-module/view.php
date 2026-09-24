@@ -54,10 +54,10 @@ load_js("Modules/feed/feed.js");
                 <span v-if="item.params.process_mode=='from'">Process from {{ item.process_start }}</span>
             </td>
             <td>
-                <span v-if="item.status=='queued'" :title="time_ago(item.status_updated)" class="label label-info">Queued</span>
-                <span v-if="item.status=='running'" :title="time_ago(item.status_updated)" class="label label-warning">Running</span>
-                <span v-if="item.status=='finished'" :title="time_ago(item.status_updated)+'\n\n'+item.status_message" class="label label-success">Finished</span>
-                <span v-if="item.status=='error'" :title="time_ago(item.status_updated)" class="label label-danger">Error: {{ item.status_message }}</span>
+                <span v-if="item.status=='queued'" :title="time_ago(item.status_updated)" class="badge bg-info">Queued</span>
+                <span v-if="item.status=='running'" :title="time_ago(item.status_updated)" class="badge bg-warning">Running</span>
+                <span v-if="item.status=='finished'" :title="time_ago(item.status_updated)+'\n\n'+item.status_message" class="badge bg-success">Finished</span>
+                <span v-if="item.status=='error'" :title="time_ago(item.status_updated)" class="badge bg-danger">Error: {{ item.status_message }}</span>
             <td>
                 <button class="btn btn-success" @click="run_process(item.processid)">Run</button>
                 <button class="btn btn-info" @click="edit_process(index)">Edit</button>
@@ -66,12 +66,12 @@ load_js("Modules/feed/feed.js");
         </tr>
     </table>
 
-    <div class="alert" v-if="process_list.length==0"><p><b>No processes created yet</b></p>
+    <div class="alert alert-warning" v-if="process_list.length==0"><p><b>No processes created yet</b></p>
 
     <p>Rather than process inputs as data arrives in emoncms such as calculating cumulative kWh data from power data with the power to kWh input process, this module can be used to do these kind of processing steps after having recorded base data such as power data for some time. This removes the reliance on setting up everything right in the first instance providing the flexibility to recalculate processed feeds at a later date.</p>
     </div>
 
-    <div class="well" style="max-width:500px">
+    <div class="bg-body-tertiary border rounded p-3 mb-3" style="max-width:500px; box-sizing:content-box">
         <h4><span v-if="mode=='create'">Create new</span><span v-if="mode=='edit'">Edit process</span></h4>
 
         <select v-model="new_process_select" @change="new_process_selected">
@@ -90,7 +90,7 @@ load_js("Modules/feed/feed.js");
             <span v-for="(param,key) in processes[new_process_select].settings">
                 <div v-if="param.type=='feed' || param.type=='newfeed'">
                     <b>{{param.short}}</b><br>
-                    <div class="input-append input-prepend">
+                    <div class="input-group">
                         <select v-model="new_process[key]" @change="change_feed_select" style="width:150px">
                             <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
                             <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
@@ -112,8 +112,8 @@ load_js("Modules/feed/feed.js");
                     <b v-html="param.short"></b><br>
 
                     <!-- Create a list of available feeds -->
-                    <div class="input-prepend">
-                        <span class="add-on">Feed finder</span>
+                    <div class="input-group">
+                        <span class="input-group-text">Feed finder</span>
                         <select style="width:150px" v-model="formula_feed_finder_id" @change="formula_feed_finder_change">
                             <option value="none">SELECT FEED:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
@@ -123,8 +123,8 @@ load_js("Modules/feed/feed.js");
                             </optgroup>
                         </select>
                     </div>
-                    <div class="input-prepend">
-                        <span class="add-on">Expression</span>
+                    <div class="input-group">
+                        <span class="input-group-text">Expression</span>
                         <input type="text" v-model="new_process[key]" @change="new_process_update">
                     </div>
                 </div>
@@ -136,8 +136,8 @@ load_js("Modules/feed/feed.js");
                 </div>
             </span>
 
-            <div class="input-prepend input-append">
-                <span class="add-on">Process:</span>
+            <div class="input-group">
+                <span class="input-group-text">Process:</span>
                 <select v-model="new_process_mode" @change="new_process_update" style="width:150px">
                     <option value="all">from the start</option>
                     <!--<option value="from">from timestamp</option>-->
@@ -147,14 +147,14 @@ load_js("Modules/feed/feed.js");
                 <button class="btn btn-success" v-if="new_process_create" @click="create_process">Run</button>
             </div>
 
-            <div class="alert alert-error" v-if="new_process_error"><b>Error: </b>{{new_process_error}}</div>
+            <div class="alert alert-danger" v-if="new_process_error"><b>Error: </b>{{new_process_error}}</div>
         </div>
     </div>
 </div>
 
 <!--
 <hr>
-<button id="getlog" type="button" class="btn btn-info" data-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
+<button id="getlog" type="button" class="btn btn-info" data-bs-toggle="button" aria-pressed="false" autocomplete="off" style="float:right; margin-top:10px"><?php echo _('Auto refresh'); ?></button>
 <h3>Logger</h3>
 <div id="logpath"></div>
 <pre id="logreply-bound" class="log"><div id="logreply"></div></pre>
