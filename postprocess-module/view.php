@@ -74,7 +74,7 @@ load_js("Modules/feed/feed.js");
     <div class="bg-body-tertiary border rounded p-3 mb-3" style="max-width:500px; box-sizing:content-box">
         <h4><span v-if="mode=='create'">Create new</span><span v-if="mode=='edit'">Edit process</span></h4>
 
-        <select v-model="new_process_select" @change="new_process_selected">
+        <select class="form-select input-220 mb-2" v-model="new_process_select" @change="new_process_selected">
             <option value="none">SELECT PROCESS:</option>
             <optgroup v-for="(group,groupname) in processes_by_group" v-bind:label="groupname">
                 <option v-for="(item,key) in group" :value="key">{{item.name}}</option>
@@ -91,7 +91,7 @@ load_js("Modules/feed/feed.js");
                 <div v-if="param.type=='feed' || param.type=='newfeed'">
                     <b>{{param.short}}</b><br>
                     <div class="input-group">
-                        <select v-model="new_process[key]" @change="change_feed_select" style="width:150px">
+                        <select class="form-select" v-model="new_process[key]" @change="change_feed_select" style="width:150px">
                             <option value="none" v-if="param.type=='feed'">SELECT FEED:</option>
                             <option value="create" v-if="param.type=='newfeed'">CREATE NEW:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
@@ -100,13 +100,13 @@ load_js("Modules/feed/feed.js");
                                 </template>
                             </optgroup>
                         </select>
-                        <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].tag" placeholder="Tag" style="width:100px" @change="new_process_update"/>
-                        <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].name" placeholder="Name" style="width:150px" @change="new_process_update" />
+                        <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].tag" placeholder="Tag" class="form-control" style="width:114px" @change="new_process_update"/>
+                        <input type="text" v-if="new_process[key]=='create'" v-model="new_feed[key].name" placeholder="Name" class="form-control input-165" @change="new_process_update" />
                     </div>
                 </div>
                 <div v-if="param.type=='value' || param.type=='timezone'">
                     <b v-html="param.short"></b><br>
-                    <input type="text" v-model="new_process[key]" @change="new_process_update">
+                    <input class="form-control input-220 mb-2" type="text" v-model="new_process[key]" @change="new_process_update">
                 </div>
                 <div v-if="param.type=='formula'">
                     <b v-html="param.short"></b><br>
@@ -114,7 +114,7 @@ load_js("Modules/feed/feed.js");
                     <!-- Create a list of available feeds -->
                     <div class="input-group">
                         <span class="input-group-text">Feed finder</span>
-                        <select style="width:150px" v-model="formula_feed_finder_id" @change="formula_feed_finder_change">
+                        <select class="form-select" style="width:150px" v-model="formula_feed_finder_id" @change="formula_feed_finder_change">
                             <option value="none">SELECT FEED:</option>
                             <optgroup v-for="(tag,tagname) in feeds_by_tag" v-bind:label="tagname">
                                 <template v-for="(feed,feedid) in tag">
@@ -125,12 +125,12 @@ load_js("Modules/feed/feed.js");
                     </div>
                     <div class="input-group">
                         <span class="input-group-text">Expression</span>
-                        <input type="text" v-model="new_process[key]" @change="new_process_update">
+                        <input class="form-control input-220" type="text" v-model="new_process[key]" @change="new_process_update">
                     </div>
                 </div>
                 <div v-if="param.type=='select'">
                     <b v-html="param.short"></b><br>
-                    <select v-model="new_process[key]" @change="new_process_update">
+                    <select class="form-select input-220 mb-2" v-model="new_process[key]" @change="new_process_update">
                         <option v-for="(option,optionname) in param.options" v-bind:value="optionname">{{option}}</option>
                     </select>
                 </div>
@@ -138,12 +138,12 @@ load_js("Modules/feed/feed.js");
 
             <div class="input-group">
                 <span class="input-group-text">Process:</span>
-                <select v-model="new_process_mode" @change="new_process_update" style="width:150px">
+                <select class="form-select" v-model="new_process_mode" @change="new_process_update" style="width:150px">
                     <option value="all">from the start</option>
                     <!--<option value="from">from timestamp</option>-->
                     <option value="recent">recent only</option>
                 </select>
-                <input type="text" v-model="new_process_start" @change="new_process_update" v-if="new_process_mode=='from'" placeholder="timestamp" style="width:100px">
+                <input type="text" v-model="new_process_start" @change="new_process_update" v-if="new_process_mode=='from'" placeholder="timestamp" class="form-control" style="width:114px">
                 <button class="btn btn-success" v-if="new_process_create" @click="create_process">Run</button>
             </div>
 
