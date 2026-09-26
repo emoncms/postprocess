@@ -219,7 +219,6 @@ var app = Vue.createApp({
 
             // load process to new process form
             let process = this.process_list[index];
-            console.log(process)
             app.new_process_select = process.params.process;
             app.new_process = { ... process.params };
             app.new_process_create = true;
@@ -227,6 +226,7 @@ var app = Vue.createApp({
             app.selected_process = process.processid;
             app.new_process_mode = process.params.process_mode;
             app.new_process_from = process.params.process_start;
+            document.getElementById("pp-form").scrollIntoView({ behavior: "smooth", block: "start" });
 
             // populate new feed form
             this.new_feed = {};
@@ -237,6 +237,16 @@ var app = Vue.createApp({
                 }
             }
 
+        },
+        cancel_edit: function() {
+            this.mode = 'create';
+            this.selected_process = -1;
+            this.new_process_select = 'none';
+            this.new_process = {};
+            this.new_feed = {};
+            this.new_process_mode = 'all';
+            this.new_process_create = false;
+            this.new_process_error = '';
         },
         run_process: function(processid) {
             $.ajax({
