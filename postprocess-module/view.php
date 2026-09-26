@@ -5,7 +5,9 @@ load_js("Modules/feed/feed.js");
 ?>
 <br>
 
-<h3>Post Processor</h3>
+<div class="page-header">
+    <h3>Post Processor</h3>
+</div>
 
 <div id="app">
 
