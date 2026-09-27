@@ -1,11 +1,4 @@
-/* Post Process: panels on the page background, as graph and backup */
-body { background-color: var(--bg-body); }
-.content-container { max-width: 1150px; }
-[v-cloak] { display: none; }
-
-.postprocess-page { padding-bottom: 2rem; }
-.postprocess-page .panel { margin-bottom: 1rem; }
-.page-lead { margin: -4px 0 14px; color: var(--text-secondary); }
+/* Post Process: panel-page from the theme */
 
 /* Process list */
 .postprocess-page table td { vertical-align: top; }
@@ -14,27 +7,16 @@ body { background-color: var(--bg-body); }
 .pp-col-status { width: 110px; }
 .pp-col-actions { width: 200px; }
 .pp-params { font-size: var(--font-sm); line-height: 1.6; }
-.pp-params .pp-key { color: var(--text-secondary); margin-right: 4px; }
-.pp-params .pp-id { color: var(--text-secondary); }
+.pp-params .pp-key { color: var(--ec-text-secondary); margin-right: 4px; }
+.pp-params .pp-id { color: var(--ec-text-secondary); }
 .pp-error { margin-top: 4px; font-size: var(--font-xs); color: var(--bs-danger-text-emphasis); }
-.pp-actions { text-align: right; white-space: nowrap; }
-.pp-actions .btn { margin: 0; }
-.pp-actions .btn + .btn { margin-left: 4px; }
-.postprocess-page tr.pp-editing td { background-color: var(--accent-bg); }
-.pp-empty { padding: 1rem; color: var(--text-secondary); }
 
 /* Create and edit form */
-.pp-form { padding: 1rem; }
-.pp-field { margin-bottom: 14px; }
-.pp-form .form-label { font-weight: 600; font-size: var(--font-sm); }
-.pp-form .input-group { display: flex; width: max-content; max-width: 100%; margin-bottom: 0; }
-.pp-form .input-group + .input-group { margin-top: 6px; }
-.pp-form .form-text { max-width: 640px; }
-.pp-buttons { display: flex; gap: 6px; }
-.pp-buttons .btn { margin: 0; }
+.panel-form .input-group { display: flex; width: max-content; max-width: 100%; }
+.panel-form .input-group + .input-group { margin-top: 6px; }
+.panel-form .form-text { max-width: 640px; }
 
 /* Table scrolls on narrow screens */
 @media (max-width: 767px) {
-    .postprocess-page .panel { overflow-x: auto; }
-    .postprocess-page table { min-width: 720px; }
+    .postprocess-page .panel-table table { min-width: 720px; }
 }
