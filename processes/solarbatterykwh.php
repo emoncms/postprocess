@@ -114,10 +114,14 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         // 4 feeds (one more than needed)
         // 3 feeds (can derive 4th)
         // 2 feeds (need at least use or grid, second can be solar or battery)
-        // 1 feed (no point, can't derive the others)
+        // 1 feed (use or grid, consumption only)
 
-        if ($num_available_input_feeds < 2) {
-            return array("success"=>false,"message"=>"At least 2 input feeds required, found only ".$num_available_input_feeds);
+        if ($num_available_input_feeds < 1) {
+            return array("success"=>false,"message"=>"Use or grid feed required");
+        }
+
+        if ($num_available_input_feeds == 1 && !$has_use && !$has_grid) {
+            return array("success"=>false,"message"=>"A single input feed must be use or grid");
         }
 
         if ($num_available_input_feeds == 2) {
