@@ -316,6 +316,8 @@ class ModelHelper
 
     public function write($key, $value)
     {
+        // Skip outputs that are not loaded
+        if (empty($this->fh[$key])) return;
         $this->buffer[$key] .= pack("f", $value);
         $this->value[$key] = $value;
     }

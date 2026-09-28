@@ -231,10 +231,10 @@ class PostProcess_solarbatterykwh extends PostProcess_common
 
         for ($time=$start_time; $time<$end_time; $time+=$interval)
         {
-            $solar         = $model->read('solar',$solar);
-            $use           = $model->read('use',$use);
-            $grid          = $model->read('grid',$grid);
-            $battery       = $model->read('battery',$battery);
+            $solar         = $this->valid_power($model->read('solar',$solar), $solar);
+            $use           = $this->valid_power($model->read('use',$use), $use);
+            $grid          = $this->valid_power($model->read('grid',$grid), $grid);
+            $battery       = $this->valid_power($model->read('battery',$battery), $battery);
 
             // Limits
             if ($solar < 0) $solar = 0; // negative solar doesn't make sense
@@ -383,5 +383,12 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             "starting_values"=>$starting_values,
             "end_values"=>$end_values
         );
+    }
+
+    // Corrupt feed values (infinite or beyond 100 MW) keep the last valid value
+    private function valid_power($value, $last)
+    {
+        if (!is_finite($value) || abs($value) > 1.0e8) return $last;
+        return $value;
     }
 }
