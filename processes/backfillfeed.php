@@ -51,6 +51,6 @@ class PostProcess_backfillfeed extends PostProcess_common
         }
         $byteswritten = $target->close();
 
-        return array("success"=>true, "message"=>"bytes written: ".$byteswritten.", last time value: ".$target->last_time()." ".$target->last_value());
+        return array("success"=>true, "message"=>written_message($byteswritten, $target));
     }
 }

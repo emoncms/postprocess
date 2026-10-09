@@ -160,3 +160,95 @@ test("basic_formula from", function() {
     assert_success(run("basic_formula", ["formula"=>"f1*3", "output"=>4, "process_mode"=>"from", "process_start"=>1010]));
     assert_feed(4, 1000, 10, [3, 60, 90]);
 });
+
+test("basic_formula multiply by zero", function() {
+    feed(1, 1000, 10, [1, 2, NAN]);
+    empty_feed(4);
+    assert_success(run("basic_formula", ["formula"=>"f1*0+3", "output"=>4]));
+    assert_feed(4, 1000, 10, [3, 3, NAN]);
+});
+
+test("basic_formula division by zero is missing", function() {
+    feed(1, 1000, 10, [6, 6, 6]);
+    feed(2, 1000, 10, [2, 0, NAN]);
+    empty_feed(4);
+    assert_success(run("basic_formula", ["formula"=>"f1/f2", "output"=>4]));
+    assert_feed(4, 1000, 10, [3, NAN, NAN]);
+    assert_success(run("basic_formula", ["formula"=>"f1/0+2", "output"=>4]));
+    assert_feed(4, 1000, 10, [NAN, NAN, NAN]);
+});
+
+// Formula value for one datapoint, $values keyed by feed id. Reference for the block
+// evaluator in basic_formula, evaluating each datapoint separately
+function formula_reference($elements, $values)
+{
+    // sum of the products of each term
+    $sum = function($terms) use ($values) {
+        $s = [];
+        foreach ($terms as $term) {
+            $product = [];
+            foreach ($term as $e) {
+                $value = ($e[0] == "feed") ? $values[$e[2]] : (float) $e[2];
+                if ($e[1] == "/") $value = ($value == 0) ? NAN : 1 / $value;
+                if ($e[1] == "-") $value = -$value;
+                $product[] = $value;
+            }
+            $s[] = array_product($product);
+        }
+        return array_sum($s);
+    };
+    $total = 0;
+    foreach ($elements as $element) {
+        $s1 = $sum([$element->scale]);
+        $s2 = $sum($element->formula);
+        $s3 = $sum([$element->scale_right]);
+        if ($element->function == "max") {
+            $arg2 = is_numeric($element->arg2) ? $element->arg2 : $sum($element->arg2);
+            if (is_nan($s1) || is_nan($s2) || is_nan($s3) || is_nan($arg2)) return NAN;
+            $total += $s1 * max($s2, $arg2) * $s3;
+        } else {
+            $total += $s1 * $s2 * $s3;
+        }
+    }
+    return $total;
+}
+
+test("basic_formula block evaluation matches per datapoint reference", function() {
+    global $testdir;
+    // Random data with missing values and zeros, more than one block
+    mt_srand(42);
+    $n = POSTPROCESS_BLOCKSIZE + 1000;
+    $data = [];
+    foreach ([1, 2, 3, 12] as $id) {
+        for ($i=0; $i<$n; $i++) {
+            $r = mt_rand(0, 99);
+            $data[$id][$i] = $r < 3 ? NAN : ($r < 8 ? 0.0 : mt_rand(-5000, 5000) / 100);
+        }
+        feed($id, 0, 10, $data[$id]);
+    }
+    // Feed values as stored
+    foreach ($data as $id => $values) $data[$id] = values($id);
+
+    $formulas = ["f1+2*f2", "2*max(f1-f2,0)", "10*(f1-1)+f2/2", "f1-0.5*f2+max(f3-21,0)",
+        "1162.5*f2*(f1-11)", "f1/f2", "-f1*f2/3+4", "max(f1,f2)", "3*max(f1-f2,f3*2)/4", "f1+f12",
+        "f1*0", "f1/0+2", "-(f1+f2)", "f1-f2-f3*f12/2.5", "2(f1+3)-f2", "f1/f2/f3", "max(f1-f2,f3-f12)+f1"];
+
+    $p = new PostProcess_basic_formula($testdir);
+    foreach ($formulas as $formula) {
+        empty_feed(9);
+        assert_success(run("basic_formula", ["formula"=>$formula, "output"=>9]));
+        $parsed = $p->parse_formula($formula);
+        $expected = [];
+        for ($i=0; $i<$n; $i++) {
+            $values = [];
+            foreach ($parsed["feed_ids"] as $id) $values[$id] = $data[$id][$i];
+            $expected[] = formula_reference($parsed["elements"], $values);
+        }
+        // Compare as stored, 32 bit floats
+        $expected = array_values(unpack("f*", pack("f*", ...$expected)));
+        if (pack("f*", ...$expected) !== pack("f*", ...values(9))) {
+            assert_equal($expected, values(9), $formula);
+            throw new TestFailure("$formula: differs from reference by less than the assert_equal tolerance");
+        }
+    }
+});

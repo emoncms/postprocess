@@ -250,6 +250,16 @@ class FeedReader
     }
 }
 
+// Result message for a process that has written to $writer
+function written_message($bytes, $writer)
+{
+    $message = "bytes written: ".$bytes;
+    if ($writer->last_time() !== false) {
+        $message .= ", last time value: ".$writer->last_time()." ".$writer->last_value();
+    }
+    return $message;
+}
+
 class FeedWriter
 {
     public $id;
@@ -484,7 +494,7 @@ abstract class MapProcess extends ValueProcess
         } catch (PostProcessException $e) {
             return array("success"=>false, "message"=>$e->getMessage());
         }
-        return array("success"=>true, "message"=>"bytes written: ".$bytes.", last time value: ".$output->last_time()." ".$output->last_value());
+        return array("success"=>true, "message"=>written_message($bytes, $output));
     }
 }
 
@@ -633,74 +643,8 @@ abstract class CombineProcess extends PostProcess_common
         } catch (PostProcessException $e) {
             return array("success"=>false, "message"=>$e->getMessage());
         }
-        return array("success"=>true, "message"=>"bytes written: ".$bytes.", last time value: ".$output->last_time()." ".$output->last_value());
+        return array("success"=>true, "message"=>written_message($bytes, $output));
     }
-}
-
-/*
-format an array for the formula engine
-$b is the result of a preg_match on a formula chunk with the regexp /($Xop)?($Xnbr)?($Xf)?/
-$Xop : regexp for operator
-$Xnbr : regexp for float or int value
-$Xf : regexp for a feed
-cf process basic_formula for more details on $Xop,$Xnbr,$Xf
-ouputs a formula element as a 3 elements vector :
-0 -> type of data ie "feed" ou "value"
-1 -> operator
-2 -> value or feed number
-*/
-function ftoa($b): array
-{
-    $c = [];
-    //print_r($b);
-    if (sizeof(value: $b) == 4) {
-        $c[0] = "feed";
-        $c[2] = intval(value: substr(string: $b[3], offset: 1));
-    } else {
-        $c[0] = "value";
-        $c[2] = $b[2];
-    }
-    $c[1] = $b[1];
-    if (!$c[2]) $c[2] = 1;
-    if (!$c[1]) $c[1] = '+';
-    return $c;
-}
-
-/*
-output of a basic formula for one timestep
-the formula is described by the $elements array > a third dimensionnal array > datas are on level 2
-for a given level 1, we operate multiplication/division within level 2 elements and give a sign to the result
-the final result is the addition of the whole
-a formula element is a 3 elements vector :
-0 -> type of data ie "feed" ou "value"
-1 -> operator
-2 -> value or feed number
-values : feed values for this timestep keyed by feed number
-*/
-function bfo($elements, $values): float|int
-{
-    $s = [];
-    foreach ($elements as $element) {
-        $product = [];
-        foreach ($element as $e) {
-            $value = NAN;
-            if ($e[0] == "feed") $value = $values[$e[2]];
-            if ($e[0] == "value") $value = $e[2];
-            if (!is_nan(num: $value) && $value != 0) {
-                if ($e[1] == "/") $value = 1 / $value;
-                if ($e[1] == "-") $value = -$value;
-            }
-            $product[] = $value;
-        }
-        if (!in_array(needle: NAN, haystack: $product)) {
-            $s[] = array_product(array: $product);
-        } else $s[] = NAN;
-    }
-    if (!in_array(needle: NAN, haystack: $s)) {
-        $sum = array_sum(array: $s);
-    } else $sum = NAN;
-
-    return $sum;
 }
 
 // Helper for simulation processes that step through time one datapoint at a time with

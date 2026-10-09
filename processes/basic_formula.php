@@ -1,5 +1,33 @@
 <?php
 
+/*
+format an array for the formula engine
+$b is the result of a preg_match on a formula chunk with the regexp /($Xop)?($Xnbr)?($Xf)?/
+$Xop : regexp for operator
+$Xnbr : regexp for float or int value
+$Xf : regexp for a feed
+ouputs a formula element as a 3 elements vector :
+0 -> type of data ie "feed" ou "value"
+1 -> operator
+2 -> value or feed number
+a missing value is 1, e.g. a lone operator
+*/
+function ftoa($b): array
+{
+    $c = [];
+    if (sizeof(value: $b) == 4) {
+        $c[0] = "feed";
+        $c[2] = intval(value: substr(string: $b[3], offset: 1));
+    } else {
+        $c[0] = "value";
+        $c[2] = $b[2];
+        if ($c[2] === "") $c[2] = "1";
+    }
+    $c[1] = $b[1];
+    if (!$c[1]) $c[1] = '+';
+    return $c;
+}
+
 function formula_to_array($formula_string, $reg_exp): array
 {
   //process a formula string to an array
@@ -7,8 +35,7 @@ function formula_to_array($formula_string, $reg_exp): array
   foreach (preg_split(pattern: "@(?=(\*|\/))@",subject: $formula_string) as $piece) {
     if (preg_match(pattern: $reg_exp, subject: $piece, matches: $b)){
       if (count(value: $b)>2){
-        $c=ftoa(b: $b);
-        if($c[2]) $fly[]=$c;
+        $fly[]=ftoa(b: $b);
       }
     }
   }
@@ -44,11 +71,21 @@ class PostProcess_basic_formula extends CombineProcess
 
     public function process($params): array
     {
-        $DEBUG = 0;
         $result = $this->validate(processitem: $params);
         if (!$result["success"]) return $result;
 
-        $dir = $this->dir;
+        if (!$parsed = $this->parse_formula(formula: $params->formula)) {
+          return ["success"=>false, "message"=>"could not understand your formula SORRY...."];
+        }
+        $this->elements=$parsed["elements"];
+        $this->feed_ids=$parsed["feed_ids"];
+        return parent::process($params);
+    }
+
+    // parse a formula into elements and the feed ids it uses, false if not understood
+    public function parse_formula($formula)
+    {
+        $DEBUG = 0;
         // regular expression to recognize a float or int value
         // use of ?: not to perturb things in creating useless references
         $Xnbr="(?:[0-9]+\.[0-9]+|[0-9]+)";
@@ -76,8 +113,6 @@ class PostProcess_basic_formula extends CombineProcess
         $nbf=count(value: $functions);
         
 
-        //retrieving the formula
-        $formula=$params->formula;
         //removing useless brackets
         $pos=0;
         $original=$formula;
@@ -212,9 +247,7 @@ class PostProcess_basic_formula extends CombineProcess
           print $original_copy;
           print "\n\n";
         }
-        if ($original_copy!="") {
-          return ["success"=>false, "message"=>"could not understand your formula SORRY...."];
-        }
+        if ($original_copy!="") return false;
 
         $elements=[];
         foreach ($array as $a){
@@ -258,9 +291,7 @@ class PostProcess_basic_formula extends CombineProcess
         }
         if ($DEBUG) print_r(value: $elements);
 
-        $this->elements=$elements;
-        $this->feed_ids=$feed_ids;
-        return parent::process($params);
+        return ["elements"=>$elements, "feed_ids"=>$feed_ids];
     }
 
     protected function input_feeds($params)
@@ -270,36 +301,57 @@ class PostProcess_basic_formula extends CombineProcess
         return $feeds;
     }
 
+    // formula values for a block of datapoints, the formula is evaluated one operation at a time
+    // over the whole block. missing values and division by zero give NAN
     protected function block($blocks)
     {
-        $out=[];
         $n=count(value: reset($blocks));
-        for ($i=0;$i<$n;$i++) {
-          $values=[];
-          foreach ($blocks as $id=>$block) $values[$id]=$block[$i];
-          $out[]=$this->evaluate(values: $values);
+        $total=array_fill(0,$n,0);
+        foreach ($this->elements as $element) {
+          $s1=$this->sum_block(terms: [$element->scale], blocks: $blocks, n: $n);
+          $s2=$this->sum_block(terms: $element->formula, blocks: $blocks, n: $n);
+          $s3=$this->sum_block(terms: [$element->scale_right], blocks: $blocks, n: $n);
+          if ($element->function=="max") {
+            $arg2_constant=is_numeric(value: $element->arg2);
+            $arg2=$arg2_constant ? null : $this->sum_block(terms: $element->arg2, blocks: $blocks, n: $n);
+            for ($i=0;$i<$n;$i++) {
+              $a2=$arg2_constant ? $element->arg2 : $arg2[$i];
+              if (is_nan($s1[$i]) || is_nan($s2[$i]) || is_nan($s3[$i]) || is_nan($a2)) $total[$i]=NAN;
+              else $total[$i]+=$s1[$i]*max($s2[$i],$a2)*$s3[$i];
+            }
+          } else {
+            for ($i=0;$i<$n;$i++) $total[$i]+=$s1[$i]*$s2[$i]*$s3[$i];
+          }
         }
-        return $out;
+        return $total;
     }
 
-    // value of the formula for one timestep, $values are the feed values keyed by feed id
-    private function evaluate($values)
+    // for each datapoint of the block, the sum of the products of each term
+    // a term is a list of factors [type "feed" or "value", operator, feed id or value]
+    private function sum_block($terms,$blocks,$n)
     {
-        $s=[];
-        foreach($this->elements as $element){
-          $s1=bfo(elements: [$element->scale], values: $values);
-          $s2=bfo(elements: $element->formula, values: $values);
-          $s3=bfo(elements: [$element->scale_right], values: $values);
-          if (!is_nan(num: $s1) && !is_nan(num: $s2) && !is_nan(num: $s3)) {
-            if($element->function=="max") {
-              $arg2 = (is_numeric(value: $element->arg2)) ? $element->arg2 : bfo(elements: $element->arg2, values: $values);
-              $s[] = (!is_nan(num: $arg2)) ? $s1*max([$s2,$arg2])*$s3 : NAN;
+        $sum=array_fill(0,$n,0);
+        foreach ($terms as $term) {
+          $product=array_fill(0,$n,1);
+          foreach ($term as $e) {
+            if ($e[0]=="value") {
+              $value=(float) $e[2];
+              if ($e[1]=="/") $value=($value==0) ? NAN : 1/$value;
+              if ($e[1]=="-") $value=-$value;
+              for ($i=0;$i<$n;$i++) $product[$i]*=$value;
+            } else {
+              $values=$blocks[$e[2]];
+              if ($e[1]=="/") {
+                foreach ($values as $i=>$value) $product[$i]*=($value==0) ? NAN : 1/$value;
+              } else if ($e[1]=="-") {
+                foreach ($values as $i=>$value) $product[$i]*=-$value;
+              } else {
+                foreach ($values as $i=>$value) $product[$i]*=$value;
+              }
             }
-            if($element->function=="brackets" || $element->function=="none") {
-              $s[]=$s1*$s2*$s3;
-            }
-          } else $s[] = NAN;
+          }
+          for ($i=0;$i<$n;$i++) $sum[$i]+=$product[$i];
         }
-        return (!in_array(needle: NAN, haystack: $s)) ? array_sum(array: $s) : NAN;
+        return $sum;
     }
 }
