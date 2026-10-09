@@ -22,3 +22,17 @@ Alternatively to run manually:
 
     cd /opt/emoncms/modules/postprocess
     sudo php postprocess_run.php
+### Tests
+
+Processes are tested against small synthetic feeds in a temporary directory, no database or redis is required:
+
+    php tests/run.php            # all tests
+    php tests/run.php scalefeed  # tests whose name contains scalefeed
+
+Most processes extend a base class in `common.php` and only implement the calculation:
+
+- `MapProcess`: transforms each value of an input feed into an output feed, implement `value($value)`, e.g. `processes/scalefeed.php`
+- `InPlaceProcess`: transforms each value of a feed in place, implement `value($value)`, e.g. `processes/to_signed.php`
+- `CombineProcess`: combines input feeds on a common timeline into an output feed, implement `row($a, $b, ...)`, e.g. `processes/importcalc.php`, or with `reset($previous)` to accumulate, e.g. `processes/powertokwh.php`
+
+Simulations that step through time with several inputs and outputs use `ModelHelper`, e.g. `processes/batterysimulator.php`. Other processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` for block based feed access, see `processes/backfillfeed.php` for an example.

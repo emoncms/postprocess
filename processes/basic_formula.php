@@ -1,5 +1,33 @@
 <?php
 
+/*
+format an array for the formula engine
+$b is the result of a preg_match on a formula chunk with the regexp /($Xop)?($Xnbr)?($Xf)?/
+$Xop : regexp for operator
+$Xnbr : regexp for float or int value
+$Xf : regexp for a feed
+ouputs a formula element as a 3 elements vector :
+0 -> type of data ie "feed" ou "value"
+1 -> operator
+2 -> value or feed number
+a missing value is 1, e.g. a lone operator
+*/
+function ftoa($b): array
+{
+    $c = [];
+    if (sizeof(value: $b) == 4) {
+        $c[0] = "feed";
+        $c[2] = intval(value: substr(string: $b[3], offset: 1));
+    } else {
+        $c[0] = "value";
+        $c[2] = $b[2];
+        if ($c[2] === "") $c[2] = "1";
+    }
+    $c[1] = $b[1];
+    if (!$c[1]) $c[1] = '+';
+    return $c;
+}
+
 function formula_to_array($formula_string, $reg_exp): array
 {
   //process a formula string to an array
@@ -7,16 +35,18 @@ function formula_to_array($formula_string, $reg_exp): array
   foreach (preg_split(pattern: "@(?=(\*|\/))@",subject: $formula_string) as $piece) {
     if (preg_match(pattern: $reg_exp, subject: $piece, matches: $b)){
       if (count(value: $b)>2){
-        $c=ftoa(b: $b);
-        if($c[2]) $fly[]=$c;
+        $fly[]=ftoa(b: $b);
       }
     }
   }
   return $fly;
 }
 
-class PostProcess_basic_formula extends PostProcess_common
+class PostProcess_basic_formula extends CombineProcess
 {
+    private $elements = [];
+    private $feed_ids = [];
+
     public function description(): array {
 
         $bfdescription="Enter your formula as a symbolic expression - allows brackets and the max function <br>
@@ -39,13 +69,23 @@ class PostProcess_basic_formula extends PostProcess_common
           ];
     }
 
-    public function process($processitem): array
+    public function process($params): array
     {
-        $DEBUG = 0;
-        $result = $this->validate(processitem: $processitem);
+        $result = $this->validate(processitem: $params);
         if (!$result["success"]) return $result;
 
-        $dir = $this->dir;
+        if (!$parsed = $this->parse_formula(formula: $params->formula)) {
+          return ["success"=>false, "message"=>"could not understand your formula SORRY...."];
+        }
+        $this->elements=$parsed["elements"];
+        $this->feed_ids=$parsed["feed_ids"];
+        return parent::process($params);
+    }
+
+    // parse a formula into elements and the feed ids it uses, false if not understood
+    public function parse_formula($formula)
+    {
+        $DEBUG = 0;
         // regular expression to recognize a float or int value
         // use of ?: not to perturb things in creating useless references
         $Xnbr="(?:[0-9]+\.[0-9]+|[0-9]+)";
@@ -73,8 +113,6 @@ class PostProcess_basic_formula extends PostProcess_common
         $nbf=count(value: $functions);
         
 
-        //retrieving the formula
-        $formula=$processitem->formula;
         //removing useless brackets
         $pos=0;
         $original=$formula;
@@ -121,12 +159,8 @@ class PostProcess_basic_formula extends PostProcess_common
         $original=$formula;
 
         //we catch the distinct feed numbers involved in the formula
-        $feed_ids=[];
-        while(preg_match(pattern: "/$Xf/", subject: $formula, matches: $b)){
-            //removing the f...
-            $feed_ids[]=substr(string: $b[0], offset: 1);
-            $formula=str_replace(search: $b[0], replace: "", subject: $formula);
-        }
+        preg_match_all(pattern: "/f(\d+)/", subject: $formula, matches: $b);
+        $feed_ids=array_values(array_unique(array: $b[1]));
         $formula=$original;
 
         $array= [];
@@ -213,20 +247,7 @@ class PostProcess_basic_formula extends PostProcess_common
           print $original_copy;
           print "\n\n";
         }
-        if ($original_copy=="") print "formula is OK!!\n"; else {
-          return ["success"=>false, "message"=>"could not understand your formula SORRY...."];
-        }
-
-        //checking the output feed
-        $fopen_mode='ab';
-        if ($processitem->process_mode=='all') {
-            $fopen_mode='wb';
-        }
-        $out=$processitem->output;
-        if(!$out_meta = getmeta(dir: $dir,id: $out)) return array("success"=>false, "message"=>"could not get meta for $out");
-        if (!$out_fh = @fopen(filename: $dir.$out.".dat", mode: $fopen_mode)) {
-            return ["success"=>false, "message"=>"could not open $dir $out.dat"];
-        }
+        if ($original_copy!="") return false;
 
         $elements=[];
         foreach ($array as $a){
@@ -270,100 +291,67 @@ class PostProcess_basic_formula extends PostProcess_common
         }
         if ($DEBUG) print_r(value: $elements);
 
-        //we retrieve the meta and open the dat files
-        foreach ($feed_ids as $id){
-            if(!$meta = getmeta(dir: $dir, id: $id)) return array("success"=>false, "message"=>"could not get meta for $id");
-            $feeds_meta[$id]=$meta;
-            if (!$fh = @fopen(filename: "$dir$id.dat", mode: 'rb')) {
-                return ["success"=>false, "message"=>"could not open $dir $id.dat"];
+        return ["elements"=>$elements, "feed_ids"=>$feed_ids];
+    }
+
+    protected function input_feeds($params)
+    {
+        $feeds=[];
+        foreach ($this->feed_ids as $id) $feeds[$id]=$id;
+        return $feeds;
+    }
+
+    // formula values for a block of datapoints, the formula is evaluated one operation at a time
+    // over the whole block. missing values and division by zero give NAN
+    protected function block($blocks)
+    {
+        $n=count(value: reset($blocks));
+        $total=array_fill(0,$n,0);
+        foreach ($this->elements as $element) {
+          $s1=$this->sum_block(terms: [$element->scale], blocks: $blocks, n: $n);
+          $s2=$this->sum_block(terms: $element->formula, blocks: $blocks, n: $n);
+          $s3=$this->sum_block(terms: [$element->scale_right], blocks: $blocks, n: $n);
+          if ($element->function=="max") {
+            $arg2_constant=is_numeric(value: $element->arg2);
+            $arg2=$arg2_constant ? null : $this->sum_block(terms: $element->arg2, blocks: $blocks, n: $n);
+            for ($i=0;$i<$n;$i++) {
+              $a2=$arg2_constant ? $element->arg2 : $arg2[$i];
+              if (is_nan($s1[$i]) || is_nan($s2[$i]) || is_nan($s3[$i]) || is_nan($a2)) $total[$i]=NAN;
+              else $total[$i]+=$s1[$i]*max($s2[$i],$a2)*$s3[$i];
             }
-            $feeds_dat[$id]=$fh;
-        }
-
-        $compute_meta= call_user_func_array(callback: "compute_meta", args: $feeds_meta);
-
-        //reading the output meta and if dat file is empty, we adjust interval and start_time
-        //we do not report the values in the meta file at this stage. we wait for the dat file to be filled with processed datas
-        //if dat file is not empty, meta file should already contain correct values
-        print("NOTICE : ouput is : ($out_meta->npoints,$out_meta->interval,$out_meta->start_time) \n");
-        if($out_meta->npoints==0) {
-            $out_meta->interval=$compute_meta->interval;
-            $out_meta->start_time=$compute_meta->start_time;
-        }
-        print("NOTICE : ouput is now : ($out_meta->npoints,$out_meta->interval,$out_meta->start_time) \n");
-
-        if ($processitem->process_mode=='recent') {
-          $writing_start_time=$out_meta->start_time+($out_meta->interval*$out_meta->npoints);
-        } else {
-          $writing_start_time=$out_meta->start_time;
-        }
-        
-        $writing_end_time=$compute_meta->writing_end_time;
-        $interval=$out_meta->interval;
-
-        $buffer="";
-
-        for ($time=$writing_start_time;$time<$writing_end_time;$time+=$interval){
-          $s=[];
-          foreach($elements as $element){
-            $s1=bfo(
-              elements: [$element->scale],
-              feeds_meta: $feeds_meta,
-              feeds_dat: $feeds_dat,
-              time: $time
-            );
-            $s2=bfo(
-              elements: $element->formula,
-              feeds_meta: $feeds_meta,
-              feeds_dat: $feeds_dat,
-              time: $time
-            );
-            $s3=bfo(
-              elements: [$element->scale_right],
-              feeds_meta: $feeds_meta,
-              feeds_dat: $feeds_dat,
-              time: $time
-            );
-            //print("$s1-----$s2-----$s3");
-            if (!is_nan(num: $s1) && !is_nan(num: $s2) && !is_nan(num: $s3)) {
-              if($element->function=="max") {
-                $arg2 = (is_numeric(value: $element->arg2)) ? $element->arg2 : bfo(
-                  elements: $element->arg2,
-                  feeds_meta: $feeds_meta,
-                  feeds_dat: $feeds_dat,
-                  time: $time
-                );
-                $s[] = (!is_nan(num: $arg2)) ? $s1*max([$s2,$arg2])*$s3 : NAN;
-              }
-              if($element->function=="brackets" || $element->function=="none") {
-                $s[]=$s1*$s2*$s3;
-              }
-            } else $s[] = NAN;
+          } else {
+            for ($i=0;$i<$n;$i++) $total[$i]+=$s1[$i]*$s2[$i]*$s3[$i];
           }
-          $sum = (!in_array(needle: NAN, haystack: $s)) ? array_sum(array: $s) : NAN;
-          $buffer.=pack("f", $sum);
         }
+        return $total;
+    }
 
-        if(!$buffer) {
-            return ["success"=>false, "message"=>"nothing to write - all is up to date"];
+    // for each datapoint of the block, the sum of the products of each term
+    // a term is a list of factors [type "feed" or "value", operator, feed id or value]
+    private function sum_block($terms,$blocks,$n)
+    {
+        $sum=array_fill(0,$n,0);
+        foreach ($terms as $term) {
+          $product=array_fill(0,$n,1);
+          foreach ($term as $e) {
+            if ($e[0]=="value") {
+              $value=(float) $e[2];
+              if ($e[1]=="/") $value=($value==0) ? NAN : 1/$value;
+              if ($e[1]=="-") $value=-$value;
+              for ($i=0;$i<$n;$i++) $product[$i]*=$value;
+            } else {
+              $values=$blocks[$e[2]];
+              if ($e[1]=="/") {
+                foreach ($values as $i=>$value) $product[$i]*=($value==0) ? NAN : 1/$value;
+              } else if ($e[1]=="-") {
+                foreach ($values as $i=>$value) $product[$i]*=-$value;
+              } else {
+                foreach ($values as $i=>$value) $product[$i]*=$value;
+              }
+            }
+          }
+          for ($i=0;$i<$n;$i++) $sum[$i]+=$product[$i];
         }
-
-        if(!$written_bytes=fwrite(stream: $out_fh, data: $buffer)){
-            foreach ($feeds_dat as $f) fclose(stream: $f);
-            fclose(stream: $out_fh);
-            return ["success"=>false, "message"=>"unable to write to the file with id=$out"];
-        }
-        $nbdataswritten=$written_bytes/4;
-        print("NOTICE: basic_formula() wrote $written_bytes bytes ($nbdataswritten float values) \n");
-        //we update the meta only as the dat has been filled
-        createmeta(dir: $dir, id: $out, meta: $out_meta);
-        foreach ($feeds_dat as $f) fclose(stream: $f);
-        fclose(stream: $out_fh);
-        print("last time value: $time / $sum \n");
-        updatetimevalue(id: $out, time: $time, value: $sum);
-        return [
-          "success"=>true,
-          "message"=>"bytes written: $written_bytes, last time value: $time, last written value $sum"
-        ];
+        return $sum;
     }
 }

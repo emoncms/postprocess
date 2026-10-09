@@ -145,54 +145,42 @@ class PostProcess_batterysimulator extends PostProcess_common
         // Note: implementation only allows for same meta for all output feeds
         $model->set_output_meta($start_time,$interval);
         
-        // Process new data since last run
-        if (!$recalc) $start_time = $model->meta['grid']->end_time-$interval;
+        // Continue from the end of the output feeds
+        if (!$recalc) $start_time = $model->meta['grid']->end_time;
         if ($start_time<$model->start_time) $start_time = $model->start_time;
         
-        if ($start_time==$end_time) {
+        if ($start_time>=$end_time) {
             return array("success"=>true,"message"=>"Nothing to do, data already up to date");
         }
-            
-        $solar = 0;
-        $use = 0;
+
+        // Starting values from the datapoint before the start
+        $prev = $start_time - $interval;
+        $charge_kwh = $model->read_at('charge_kwh',$prev,0);
+        $discharge_kwh = $model->read_at('discharge_kwh',$prev,0);
+        $import_kwh = $model->read_at('import_kwh',$prev,0);
+        $export_kwh = $model->read_at('export_kwh',$prev,0);
+        $solar_to_load_kwh = $model->read_at('solar_to_load_kwh',$prev,0);
+        $solar_to_grid_kwh = $model->read_at('solar_to_grid_kwh',$prev,0);
+        $solar_to_battery_kwh = $model->read_at('solar_to_battery_kwh',$prev,0);
+        $battery_to_load_kwh = $model->read_at('battery_to_load_kwh',$prev,0);
+        $battery_to_grid_kwh = $model->read_at('battery_to_grid_kwh',$prev,0);
+        $grid_to_load_kwh = $model->read_at('grid_to_load_kwh',$prev,0);
+        $grid_to_battery_kwh = $model->read_at('grid_to_battery_kwh',$prev,0);
+
         $soc = $p->capacity * 0.5;
-        $charge_kwh = 0;
-        $discharge_kwh = 0;
-        $import_kwh = 0;
-        $export_kwh = 0;
-        $solar_to_load_kwh = 0;
-        $solar_to_grid_kwh = 0;
-        $solar_to_battery_kwh = 0;
-        $battery_to_load_kwh = 0;
-        $battery_to_grid_kwh = 0;
-        $grid_to_load_kwh = 0;
-        $grid_to_battery_kwh = 0;
+        $soc_prc = $model->read_at('soc',$prev,NAN);
+        if (!is_nan($soc_prc)) $soc = $soc_prc*0.01*$p->capacity;
 
-        // Get starting values
-        $model->seek_to_time($start_time);    
-        $charge_kwh = $model->read('charge_kwh',$charge_kwh);
-        $discharge_kwh = $model->read('discharge_kwh',$discharge_kwh);
-        $import_kwh = $model->read('import_kwh',$import_kwh);
-        $export_kwh = $model->read('export_kwh',$export_kwh);
-        $solar_to_load_kwh = $model->read('solar_to_load_kwh',$solar_to_load_kwh);
-        $solar_to_grid_kwh = $model->read('solar_to_grid_kwh',$solar_to_grid_kwh);
-        $solar_to_battery_kwh = $model->read('solar_to_battery_kwh',$solar_to_battery_kwh);
-        $battery_to_load_kwh = $model->read('battery_to_load_kwh',$battery_to_load_kwh);
-        $battery_to_grid_kwh = $model->read('battery_to_grid_kwh',$battery_to_grid_kwh);
-        $grid_to_load_kwh = $model->read('grid_to_load_kwh',$grid_to_load_kwh);
-        $grid_to_battery_kwh = $model->read('grid_to_battery_kwh',$grid_to_battery_kwh);
-        
-        if ($model->meta['soc']->npoints) {
-            $soc = $model->read('soc',$soc);
-            $soc = $soc*0.01*$p->capacity;
-        }
+        // Missing values hold the last valid value, including from before this run
+        $solar = $model->last_valid('solar',$start_time,0);
+        $use = $model->last_valid('consumption',$start_time,0);
 
-        // Reset again    
         $model->seek_to_time($start_time);
-        
-        $date->setTimestamp($start_time);
+
+        $date->setTimestamp($prev);
         $hour = $date->format("H")*1;
-        $charging_offpeak = false;
+        $next_hour_time = $start_time;
+        $charging_offpeak = $this->charging_offpeak_at($model,$p,$date,$prev,$interval);
 
         $power_to_kwh = $interval / 3600000.0; // conversion factor from W to kWh for given interval
         
@@ -200,9 +188,14 @@ class PostProcess_batterysimulator extends PostProcess_common
         for ($time=$start_time; $time<$end_time; $time+=$interval) 
         {
             // $model->seek_to_time_inputs($time); not required as input feed intervals are the same
+            // Local hour, only worked out when the hour changes
             $last_hour = $hour;
-            $date->setTimestamp($time);
-            $hour = $date->format("H")*1;
+            if ($time>=$next_hour_time) {
+                $date->setTimestamp($time);
+                list($hour,$minute,$second) = explode(":",$date->format("H:i:s"));
+                $hour = $hour*1;
+                $next_hour_time = $time - ($minute*60 + $second) + 3600;
+            }
             
             $solar = $model->read('solar',$solar);
             $use = $model->read('consumption',$use);
@@ -384,5 +377,31 @@ class PostProcess_batterysimulator extends PostProcess_common
         
         $buffersize = $model->save_all();
         return array("success"=>true, "message"=>"bytes written: ".($buffersize/1024)." kb");
+    }
+
+    // Whether off-peak charging is in progress after the datapoint at $prev: the off-peak
+    // window has started since the start of the data and the state of charge has not
+    // reached the target at any datapoint since
+    private function charging_offpeak_at($model, $p, $date, $prev, $interval)
+    {
+        if (!$p->has_battery || $p->offpeak_soc_target<=0 || $prev<$model->start_time) return false;
+
+        $date->setTimestamp($prev);
+        $date->setTime((int) $p->offpeak_start, 0, 0);
+        if ($date->getTimestamp()>$prev) {
+            $date->setTimestamp($prev - 86400);
+            $date->setTime((int) $p->offpeak_start, 0, 0);
+        }
+        $window_start = $date->getTimestamp();
+
+        // First datapoint in the window
+        $first = $model->start_time + ceil(($window_start - $model->start_time) / $interval) * $interval;
+        if ($first<$model->start_time || $first>$prev) return false;
+
+        $n = (int) (($prev - $first) / $interval) + 1;
+        foreach ($model->read_range('soc',$first,$n) as $soc_prc) {
+            if (!is_nan($soc_prc) && $soc_prc>=$p->offpeak_soc_target) return false;
+        }
+        return true;
     }
 }

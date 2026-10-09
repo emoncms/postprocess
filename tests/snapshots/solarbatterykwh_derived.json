@@ -1,0 +1,51 @@
+{
+    "solar_to_load_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "9cd57d52b20f34b231e58ff7f7581bb6",
+        "last": "54.4076"
+    },
+    "solar_to_grid_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "40219b1b54dba3bae1131f77937ecc68",
+        "last": "24.9939"
+    },
+    "solar_to_battery_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "40cdcfccc2a1d85b4744612c7da077fa",
+        "last": "189.231"
+    },
+    "battery_to_load_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "c484775c3dacc31ee3741093835be1d4",
+        "last": "30.381"
+    },
+    "battery_to_grid_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "b4873e51585912e01ad8ec2379310553",
+        "last": "0"
+    },
+    "grid_to_load_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "279b40ea1a8bab53b8fdf25db84f56af",
+        "last": "30.7772"
+    },
+    "grid_to_battery_kwh": {
+        "start_time": 1711324800,
+        "interval": 900,
+        "npoints": 1112,
+        "md5": "e22b612ab8c181daf962f0132c4296e7",
+        "last": "1.34542e-6"
+    }
+}

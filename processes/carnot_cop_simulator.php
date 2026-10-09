@@ -61,25 +61,21 @@ class PostProcess_carnot_cop_simulator extends PostProcess_common
         // Note: implementation only allows for same meta for all output feeds
         $model->set_output_meta($start_time,$interval);
         
-        // Simulation start time
-        if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time-$interval;
-        
-        if ($start_time==$end_time) {
+        // Continue from the end of the output feeds
+        if (!$recalc) $start_time = $model->meta['heatpump_heat_sim']->end_time;
+        if ($start_time<$model->start_time) $start_time = $model->start_time;
+
+        if ($start_time>=$end_time) {
             return array("success"=>true,"message"=>"Nothing to do, data already up to date");
         }
-            
-        $power = 0;
-        $flowT = 0;
-        $returnT = 0;
-        $outsideT = 0;
-        $heat_kwh = 0;
 
-        // get cumulative kwh value
-        $model->seek_to_time($start_time);
-        if ($model->meta['heatpump_heat_sim']->npoints) {
-            $heat_kwh = $model->read('heatpump_heat_sim_kwh',$heat_kwh);
-        }
-        // reset again
+        // Cumulative kWh before the start, missing inputs hold the last valid value
+        $heat_kwh = $model->read_at('heatpump_heat_sim_kwh',$start_time-$interval,0);
+        $power = $model->last_valid('heatpump_elec',$start_time,0);
+        $flowT = $model->last_valid('heatpump_flowT',$start_time,0);
+        $returnT = $model->last_valid('heatpump_returnT',$start_time,0);
+        $outsideT = $model->last_valid('heatpump_outsideT',$start_time,0);
+
         $model->seek_to_time($start_time);
         
         $i=0;
