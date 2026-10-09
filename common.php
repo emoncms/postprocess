@@ -262,6 +262,8 @@ class FeedWriter
     private $bytes_written = 0;
     private $last_time = false;
     private $last_value = NAN;
+    // Set false when rewriting part of a feed, so that the feed's last time and value are left alone
+    public $update_redis = true;
 
     public function __construct($dir, $id)
     {
@@ -394,7 +396,7 @@ class FeedWriter
         }
         fclose($this->fh);
         $this->fh = false;
-        if ($this->last_time !== false) {
+        if ($this->update_redis && $this->last_time !== false) {
             updatetimevalue($this->id, $this->last_time, $this->last_value);
         }
         return $this->bytes_written;
@@ -402,6 +404,119 @@ class FeedWriter
 
     public function last_time() { return $this->last_time; }
     public function last_value() { return $this->last_value; }
+}
+
+// --------------------------------------------------------------------------------
+// Base classes for processes that transform each value of a feed
+//
+// Subclasses implement value($value), called for each datapoint that is not NAN, or
+// values($values) to handle a block of datapoints at a time, e.g. to keep state between
+// datapoints. reset() is called at the start of each run to reset any such state.
+// Process settings are available as $this->params.
+// --------------------------------------------------------------------------------
+
+abstract class ValueProcess extends PostProcess_common
+{
+    protected $params;
+
+    protected function reset() {}
+
+    protected function value($value)
+    {
+        return $value;
+    }
+
+    protected function values($values)
+    {
+        foreach ($values as $i => $value) {
+            if (!is_nan($value)) $values[$i] = $this->value($value);
+        }
+        return $values;
+    }
+}
+
+// Writes the transformed values of feed setting "input" to feed setting "output", with the
+// same start time and interval. Supports recent, from and all process modes.
+abstract class MapProcess extends ValueProcess
+{
+    public function process($params)
+    {
+        $result = $this->validate($params);
+        if (!$result["success"]) return $result;
+
+        try {
+            $input = new FeedReader($this->dir, $params->input);
+            $output = new FeedWriter($this->dir, $params->output);
+            $interval = $input->meta->interval;
+            $output->init($input->meta->start_time, $interval);
+
+            $start_time = resolve_start_time($params, $output->meta);
+            $end_time = $input->meta->end_time;
+            if ($start_time >= $end_time) {
+                return array("success"=>true, "message"=>"output feed already up to date");
+            }
+
+            $this->params = $params;
+            $this->reset();
+            $output->seek($start_time);
+            while (($time = $output->time()) < $end_time) {
+                $n = (int) min(POSTPROCESS_BLOCKSIZE, ($end_time - $time) / $interval);
+                $output->write_block($this->values($input->read_time($time, $interval, $n)));
+            }
+            // Reprocessing removes any output data beyond the end of the input
+            $bytes = $output->close($params->process_mode != 'recent');
+
+        } catch (PostProcessException $e) {
+            return array("success"=>false, "message"=>$e->getMessage());
+        }
+        return array("success"=>true, "message"=>"bytes written: ".$bytes.", last time value: ".$output->last_time()." ".$output->last_value());
+    }
+}
+
+// Transforms the values of feed setting "feedid" in place. Always processes the whole feed,
+// only blocks containing changed values are written.
+abstract class InPlaceProcess extends ValueProcess
+{
+    public function process($params)
+    {
+        $result = $this->validate($params);
+        if (!$result["success"]) return $result;
+
+        try {
+            $input = new FeedReader($this->dir, $params->feedid);
+            $output = new FeedWriter($this->dir, $params->feedid);
+            $output->update_redis = false;
+            $npoints = $input->meta->npoints;
+            if ($npoints == 0) {
+                return array("success"=>false, "message"=>"feed is empty");
+            }
+
+            $this->params = $params;
+            $this->reset();
+            $changed = 0;
+            for ($pos=0; $pos<$npoints; $pos+=POSTPROCESS_BLOCKSIZE) {
+                $values = $input->read($pos, min(POSTPROCESS_BLOCKSIZE, $npoints - $pos));
+                $new_values = $this->values($values);
+                $block_changed = 0;
+                foreach ($values as $i => $value) {
+                    $new_value = $new_values[$i];
+                    if (is_nan($value) ? !is_nan($new_value) : (is_nan($new_value) || $new_value != $value)) {
+                        $block_changed++;
+                    }
+                }
+                if ($block_changed) {
+                    $output->seek($input->meta->start_time + $pos * $input->meta->interval);
+                    $output->write_block($new_values);
+                    $changed += $block_changed;
+                }
+            }
+            $output->close();
+
+        } catch (PostProcessException $e) {
+            return array("success"=>false, "message"=>$e->getMessage());
+        }
+        return array("success"=>true, "message"=>"modified: ".$changed." datapoints, ".round(($changed / $npoints) * 100)."%");
+    }
 }
 
 //compute meta datas of different feeds intended for a preprocessing

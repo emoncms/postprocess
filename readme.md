@@ -29,4 +29,4 @@ Processes are tested against small synthetic feeds in a temporary directory, no 
     php tests/run.php            # all tests
     php tests/run.php scalefeed  # tests whose name contains scalefeed
 
-New processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` in `common.php` for block based feed access, see `processes/backfillfeed.php` for an example.
+Processes that transform each value of a feed extend `MapProcess` (input feed to output feed, e.g. `processes/scalefeed.php`) or `InPlaceProcess` (modify a feed in place, e.g. `processes/to_signed.php`) in `common.php` and only implement `value($value)`. Other processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` for block based feed access, see `processes/backfillfeed.php` for an example.

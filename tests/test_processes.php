@@ -10,7 +10,8 @@ test("scalefeed all", function() {
     empty_feed(2);
     assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2]));
     assert_feed(2, 1000, 10, [2, 4, NAN, 8]);
-    assert_redis(2, 1040, 8);
+    // Time of the last datapoint
+    assert_redis(2, 1030, 8);
 });
 
 test("scalefeed recent appends new data only", function() {
@@ -65,6 +66,44 @@ test("allownegative", function() {
     empty_feed(2);
     assert_success(run("allownegative", ["input"=>1, "output"=>2]));
     assert_feed(2, 1000, 10, [-1, 0, NAN, -3]);
+});
+
+test("scalefeed from after end of output continues from output end", function() {
+    feed(1, 1000, 10, [1, 2]);
+    empty_feed(2);
+    assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2]));
+    append(1, [3, 4]);
+    assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2, "process_mode"=>"from", "process_start"=>1030]));
+    assert_feed(2, 1000, 10, [2, 4, 6, 8]);
+});
+
+test("scalefeed all removes output beyond end of input", function() {
+    feed(1, 1000, 10, [1, 2]);
+    feed(2, 1000, 10, [9, 9, 9, 9]);
+    assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2]));
+    assert_feed(2, 1000, 10, [2, 4]);
+});
+
+test("scalefeed recent keeps output beyond end of input", function() {
+    feed(1, 1000, 10, [1, 2]);
+    feed(2, 1000, 10, [9, 9, 9, 9]);
+    assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2, "process_mode"=>"recent"]));
+    assert_feed(2, 1000, 10, [9, 9, 9, 9]);
+});
+
+test("scalefeed across block boundaries", function() {
+    $n = POSTPROCESS_BLOCKSIZE * 2 + 3;
+    $values = range(0, $n - 1);
+    feed(1, 0, 10, $values);
+    empty_feed(2);
+    assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2]));
+    assert_feed(2, 0, 10, array_map(function($v) { return $v * 2; }, $values));
+    assert_redis(2, ($n - 1) * 10, ($n - 1) * 2);
+});
+
+test("scalefeed missing output feed", function() {
+    feed(1, 1000, 10, [1]);
+    assert_error(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>5]), "does not exist");
 });
 
 // --------------------------------------------------------------------------------
@@ -159,6 +198,70 @@ test("limit_morethan_lessthan", function() {
     feed(1, 1000, 10, [-50, 5, NAN, 50]);
     assert_success(run("limit_morethan_lessthan", ["feedid"=>1, "morethan"=>10, "lessthan"=>-10]));
     assert_feed(1, 1000, 10, [-10, 5, NAN, 10]);
+});
+
+test("in place processes leave redis alone", function() {
+    global $redis;
+    feed(1, 1000, 10, [-50, 5]);
+    assert_success(run("limit_morethan_lessthan", ["feedid"=>1, "morethan"=>10, "lessthan"=>-10]));
+    assert_equal(0, count($redis->hashes));
+});
+
+test("in place process on empty feed", function() {
+    empty_feed(1);
+    assert_error(run("limit_morethan_lessthan", ["feedid"=>1, "morethan"=>10, "lessthan"=>-10]), "empty");
+});
+
+test("in place process ignores process mode", function() {
+    feed(1, 1000, 10, [-50, 5, 50]);
+    $result = run("limit_morethan_lessthan", ["feedid"=>1, "morethan"=>10, "lessthan"=>-10, "process_mode"=>"recent"]);
+    assert_success($result);
+    assert_equal("modified: 2 datapoints, 67%", $result["message"]);
+    assert_feed(1, 1000, 10, [-10, 5, 10]);
+});
+
+test("remove_morethan_lessthan", function() {
+    feed(1, 1000, 10, [-50, 5, NAN, 50]);
+    assert_success(run("remove_morethan_lessthan", ["feedid"=>1, "morethan"=>10, "lessthan"=>-10]));
+    assert_feed(1, 1000, 10, [NAN, 5, NAN, NAN]);
+});
+
+test("to_signed", function() {
+    feed(1, 1000, 10, [100, 65535, NAN, 32768, 32767]);
+    assert_success(run("to_signed", ["feedid"=>1]));
+    assert_feed(1, 1000, 10, [100, -1, NAN, -32768, 32767]);
+});
+
+test("removenan_lastvalue", function() {
+    feed(1, 1000, 10, [NAN, 1, NAN, NAN, 4, NAN]);
+    assert_success(run("removenan_lastvalue", ["feedid"=>1]));
+    // Leading NAN has no last value
+    assert_feed(1, 1000, 10, [NAN, 1, 1, 1, 4, 4]);
+});
+
+test("removenan_lastvalue carries last value across blocks and resets between runs", function() {
+    global $testdir;
+    $n = POSTPROCESS_BLOCKSIZE + 2;
+    $values = array_fill(0, $n, NAN);
+    $values[POSTPROCESS_BLOCKSIZE - 1] = 7;
+    feed(1, 0, 10, $values);
+    feed(2, 0, 10, [NAN, 3]);
+
+    // The runner reuses process objects between runs
+    $p = new PostProcess_removenan_lastvalue($testdir);
+    $params = (object) ["process_mode"=>"all", "process_start"=>0];
+    $params->feedid = 1;
+    ob_start();
+    assert_success($p->process($params));
+    $params->feedid = 2;
+    assert_success($p->process($params));
+    ob_end_clean();
+
+    $result = values(1);
+    assert_equal([7, 7, 7], array_slice($result, POSTPROCESS_BLOCKSIZE - 1));
+    assert_equal(true, is_nan($result[0]));
+    // Not carried over from the previous run
+    assert_equal([NAN, 3], values(2));
 });
 
 // --------------------------------------------------------------------------------
