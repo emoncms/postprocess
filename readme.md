@@ -29,4 +29,10 @@ Processes are tested against small synthetic feeds in a temporary directory, no 
     php tests/run.php            # all tests
     php tests/run.php scalefeed  # tests whose name contains scalefeed
 
-Processes that transform each value of a feed extend `MapProcess` (input feed to output feed, e.g. `processes/scalefeed.php`) or `InPlaceProcess` (modify a feed in place, e.g. `processes/to_signed.php`) in `common.php` and only implement `value($value)`. Other processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` for block based feed access, see `processes/backfillfeed.php` for an example.
+Most processes extend a base class in `common.php` and only implement the calculation:
+
+- `MapProcess`: transforms each value of an input feed into an output feed, implement `value($value)`, e.g. `processes/scalefeed.php`
+- `InPlaceProcess`: transforms each value of a feed in place, implement `value($value)`, e.g. `processes/to_signed.php`
+- `CombineProcess`: combines input feeds on a common timeline into an output feed, implement `row($a, $b, ...)`, e.g. `processes/importcalc.php`, or with `reset($previous)` to accumulate, e.g. `processes/powertokwh.php`
+
+Other processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` for block based feed access, see `processes/backfillfeed.php` for an example.

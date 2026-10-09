@@ -41,10 +41,18 @@ test("scalefeed from", function() {
     assert_feed(2, 1000, 10, [2, 4, 60, 80]);
 });
 
-test("scalefeed rejects interval mismatch", function() {
+test("scalefeed recent rejects interval mismatch", function() {
     feed(1, 1000, 10, [1, 2]);
     feed(2, 1000, 20, [1]);
-    assert_error(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2]), "interval mismatch");
+    assert_error(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2, "process_mode"=>"recent"]), "interval mismatch");
+    assert_feed(2, 1000, 20, [1]);
+});
+
+test("scalefeed all replaces output with different interval", function() {
+    feed(1, 1000, 10, [1, 2]);
+    feed(2, 500, 20, [9, 9, 9]);
+    assert_success(run("scalefeed", ["input"=>1, "scale"=>2, "output"=>2]));
+    assert_feed(2, 1000, 10, [2, 4]);
 });
 
 test("offsetfeed", function() {
@@ -116,7 +124,7 @@ test("powertokwh all", function() {
     empty_feed(2);
     assert_success(run("powertokwh", ["input"=>1, "output"=>2, "max_power"=>1000000, "min_power"=>-1000000]));
     assert_feed(2, 3600, 3600, [1, 2, 3, 5]);
-    assert_redis(2, 3600 * 5, 5);
+    assert_redis(2, 3600 * 4, 5);
 });
 
 test("powertokwh recent continues from last value", function() {
@@ -135,6 +143,21 @@ test("powertokwh from", function() {
     feed(1, 3600, 3600, [1000, 1000, 2000, 2000]);
     assert_success(run("powertokwh", ["input"=>1, "output"=>2, "max_power"=>1000000, "min_power"=>-1000000, "process_mode"=>"from", "process_start"=>3600 * 3]));
     assert_feed(2, 3600, 3600, [1, 2, 4, 6]);
+});
+
+test("powertokwh spurious power adds no energy and keeps alignment", function() {
+    feed(1, 3600, 3600, [1000, 5000000, NAN, 1000]);
+    empty_feed(2);
+    assert_success(run("powertokwh", ["input"=>1, "output"=>2, "max_power"=>1000000, "min_power"=>-1000000]));
+    // NAN holds the last valid power
+    assert_feed(2, 3600, 3600, [1, 1, 2, 3]);
+});
+
+test("accumulator spurious value is not added and keeps alignment", function() {
+    feed(1, 1000, 10, [1, 5000, 2]);
+    empty_feed(2);
+    assert_success(run("accumulator", ["input"=>1, "output"=>2, "max_value"=>1000, "min_value"=>-1000]));
+    assert_feed(2, 1000, 10, [1, 1, 3]);
 });
 
 test("accumulator", function() {
@@ -156,12 +179,12 @@ test("addfeeds", function() {
     assert_feed(3, 1000, 10, [11, 2, NAN, 44]);
 });
 
-test("addfeeds different intervals uses longest", function() {
+test("addfeeds different intervals uses longest, averaging shorter", function() {
     feed(1, 1000, 10, [1, 2, 3, 4]);
     feed(2, 1000, 20, [10, 20]);
     empty_feed(3);
     assert_success(run("addfeeds", ["feedA"=>1, "feedB"=>2, "output"=>3]));
-    assert_feed(3, 1000, 20, [11, 23]);
+    assert_feed(3, 1000, 20, [11.5, 23.5]);
 });
 
 test("addfeeds stops at end of shortest input", function() {

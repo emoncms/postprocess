@@ -402,6 +402,20 @@ class FeedWriter
         return $this->bytes_written;
     }
 
+    // Value of the datapoint at $time, NAN if outside of the feed
+    public function value_at($time)
+    {
+        $this->flush();
+        $offset = $time - $this->meta->start_time;
+        if ($offset < 0 || $offset % $this->meta->interval != 0) return NAN;
+        $pos = intdiv($offset, $this->meta->interval);
+        if ($pos >= $this->meta->npoints) return NAN;
+        fseek($this->fh, $pos * 4);
+        $value = unpack("f", fread($this->fh, 4))[1];
+        fseek($this->fh, $this->pos * 4);
+        return $value;
+    }
+
     public function last_time() { return $this->last_time; }
     public function last_value() { return $this->last_value; }
 }
@@ -436,7 +450,8 @@ abstract class ValueProcess extends PostProcess_common
 }
 
 // Writes the transformed values of feed setting "input" to feed setting "output", with the
-// same start time and interval. Supports recent, from and all process modes.
+// same start time and interval. Supports recent, from and all process modes, reprocessing
+// all replaces the output feed.
 abstract class MapProcess extends ValueProcess
 {
     public function process($params)
@@ -448,7 +463,7 @@ abstract class MapProcess extends ValueProcess
             $input = new FeedReader($this->dir, $params->input);
             $output = new FeedWriter($this->dir, $params->output);
             $interval = $input->meta->interval;
-            $output->init($input->meta->start_time, $interval);
+            $output->init($input->meta->start_time, $interval, $params->process_mode == 'all');
 
             $start_time = resolve_start_time($params, $output->meta);
             $end_time = $input->meta->end_time;
@@ -519,28 +534,107 @@ abstract class InPlaceProcess extends ValueProcess
     }
 }
 
-//compute meta datas of different feeds intended for a preprocessing
-function compute_meta(): stdClass
+// Combines input feeds into an output feed on a common timeline: the longest input interval,
+// from the latest input start time to the earliest input end time. Inputs with a shorter
+// interval are averaged into each output interval. Only complete output intervals are
+// written so that recent mode picks up partially recorded intervals on the next run.
+// Supports recent, from and all process modes, reprocessing all replaces the output feed.
+//
+// Subclasses set $inputs and $output to the feed setting keys and implement
+// row($a, $b, ...), called with one value per input in the order of $inputs (including NAN)
+// and returning the output value. Settings are available as $this->params and the output
+// interval as $this->interval. reset($previous) is called at the start of each run with the
+// output value before the start time (NAN if none), e.g. to continue an accumulation.
+abstract class CombineProcess extends PostProcess_common
 {
-    $numargs = func_num_args();
-    $arg_list = func_get_args();
-    $all_intervals = [];
-    $all_start_times = [];
-    $all_ending_times = [];
-    $meta = new stdClass();
-    for ($i = 0; $i < $numargs; $i++) {
-        $all_intervals[] = $arg_list[$i]->interval;
-        $all_start_times[] = $arg_list[$i]->start_time;
-        $all_ending_times[] = $arg_list[$i]->start_time + $arg_list[$i]->npoints * $arg_list[$i]->interval;
+    protected $inputs = array();
+    protected $output = "output";
+    protected $params;
+    protected $interval;
+
+    protected function reset($previous) {}
+
+    // Feed ids of the inputs keyed by name, from the $inputs settings by default
+    protected function input_feeds($params)
+    {
+        $feeds = array();
+        foreach ($this->inputs as $key) $feeds[$key] = $params->$key;
+        return $feeds;
     }
-    $meta->interval = max($all_intervals);
-    $meta->start_time = floor(max($all_start_times) / $meta->interval) * $meta->interval;
-    $meta->writing_end_time = min($all_ending_times);
-    //print("intervals.....");print_r($all_intervals);
-    //print("start_times....");print_r($all_start_times);
-    //print("ending_times.....");print_r($all_ending_times);
-    print("NOTICE : output interval=$meta->interval, start=$meta->start_time, end=$meta->writing_end_time \n");
-    return $meta;
+
+    // Output values for a block of input values, one array per input
+    protected function block($blocks)
+    {
+        $out = array();
+        $columns = array_values($blocks);
+        switch (count($columns)) {
+            case 1:
+                foreach ($columns[0] as $a) $out[] = $this->row($a);
+                break;
+            case 2:
+                foreach ($columns[0] as $i => $a) $out[] = $this->row($a, $columns[1][$i]);
+                break;
+            case 3:
+                foreach ($columns[0] as $i => $a) $out[] = $this->row($a, $columns[1][$i], $columns[2][$i]);
+                break;
+            default:
+                $n = count($columns[0]);
+                for ($i=0; $i<$n; $i++) $out[] = $this->row(...array_column($columns, $i));
+        }
+        return $out;
+    }
+
+    public function process($params)
+    {
+        $result = $this->validate($params);
+        if (!$result["success"]) return $result;
+
+        try {
+            $this->params = $params;
+            $inputs = array();
+            foreach ($this->input_feeds($params) as $key => $feedid) {
+                $inputs[$key] = new FeedReader($this->dir, $feedid);
+            }
+            if (!count($inputs)) {
+                return array("success"=>false, "message"=>"no input feeds");
+            }
+            $output = new FeedWriter($this->dir, $params->{$this->output});
+
+            $interval = 0;
+            $start_time = 0;
+            $end_time = PHP_INT_MAX;
+            foreach ($inputs as $input) {
+                $interval = max($interval, $input->meta->interval);
+                $start_time = max($start_time, $input->meta->start_time);
+                $end_time = min($end_time, $input->meta->end_time);
+            }
+            $start_time = (int) floor($start_time / $interval) * $interval;
+            $end_time = $start_time + (int) floor(($end_time - $start_time) / $interval) * $interval;
+            $this->interval = $interval;
+
+            $output->init($start_time, $interval, $params->process_mode == 'all');
+            $time = resolve_start_time($params, $output->meta);
+            if ($time >= $end_time) {
+                return array("success"=>true, "message"=>"output feed already up to date");
+            }
+
+            $this->reset($output->value_at($time - $interval));
+            $output->seek($time);
+            while (($time = $output->time()) < $end_time) {
+                $n = (int) min(POSTPROCESS_BLOCKSIZE, ($end_time - $time) / $interval);
+                $blocks = array();
+                foreach ($inputs as $key => $input) {
+                    $blocks[$key] = $input->read_time($time, $interval, $n);
+                }
+                $output->write_block($this->block($blocks));
+            }
+            $bytes = $output->close($params->process_mode != 'recent');
+
+        } catch (PostProcessException $e) {
+            return array("success"=>false, "message"=>$e->getMessage());
+        }
+        return array("success"=>true, "message"=>"bytes written: ".$bytes.", last time value: ".$output->last_time()." ".$output->last_value());
+    }
 }
 
 /*
@@ -573,7 +667,7 @@ function ftoa($b): array
 }
 
 /*
-output of a basic formula for a specified time
+output of a basic formula for one timestep
 the formula is described by the $elements array > a third dimensionnal array > datas are on level 2
 for a given level 1, we operate multiplication/division within level 2 elements and give a sign to the result
 the final result is the addition of the whole
@@ -581,32 +675,25 @@ a formula element is a 3 elements vector :
 0 -> type of data ie "feed" ou "value"
 1 -> operator
 2 -> value or feed number
-feeds_meta : array of metas such as produced by getmeta
+values : feed values for this timestep keyed by feed number
 */
-function bfo($elements, $feeds_meta, $feeds_dat, $time): float|int
+function bfo($elements, $values): float|int
 {
     $s = [];
     foreach ($elements as $element) {
-        $values = [];
+        $product = [];
         foreach ($element as $e) {
             $value = NAN;
-            if ($e[0] == "feed") {
-                $pos = floor(num: ($time - $feeds_meta[$e[2]]->start_time) / $feeds_meta[$e[2]]->interval);
-                if ($pos >= 0 && $pos < $feeds_meta[$e[2]]->npoints) {
-                    fseek(stream: $feeds_dat[$e[2]], offset: $pos * 4);
-                    $tmp = unpack("f", fread($feeds_dat[$e[2]], 4));
-                    $value = $tmp[1];
-                }
-            }
+            if ($e[0] == "feed") $value = $values[$e[2]];
             if ($e[0] == "value") $value = $e[2];
             if (!is_nan(num: $value) && $value != 0) {
                 if ($e[1] == "/") $value = 1 / $value;
                 if ($e[1] == "-") $value = -$value;
             }
-            $values[] = $value;
+            $product[] = $value;
         }
-        if (!in_array(needle: NAN, haystack: $values)) {
-            $s[] = array_product(array: $values);
+        if (!in_array(needle: NAN, haystack: $product)) {
+            $s[] = array_product(array: $product);
         } else $s[] = NAN;
     }
     if (!in_array(needle: NAN, haystack: $s)) {
