@@ -64,10 +64,10 @@ class PostProcess_common
 
             if ($setting['type']=="interval") {
                 // check if interval is valid
-                if (is_numeric($processitem->key)) {
-                    $processitem->key = (int) $processitem->key;
+                if (is_numeric($processitem->{$key})) {
+                    $processitem->{$key} = (int) $processitem->{$key};
                 }
-                if (!in_array($processitem->key, array('original',10,30,60,1800,3600))) {
+                if (!in_array($processitem->{$key}, array('original',10,30,60,1800,3600), true)) {
                     return array("success"=>false,"message"=>"invalid interval");
                 }
             }
@@ -119,12 +119,289 @@ function getmeta($dir, $id)
 
 function createmeta($dir, $id, $meta)
 {
-    $metafile = fopen($dir . $id . ".meta", 'wb');
-    fwrite($metafile, pack("I", 0));
-    fwrite($metafile, pack("I", 0));
-    fwrite($metafile, pack("I", $meta->interval));
-    fwrite($metafile, pack("I", $meta->start_time));
+    if (!$metafile = @fopen($dir . $id . ".meta", 'wb')) return false;
+    $bytes = pack("IIII", 0, 0, $meta->interval, $meta->start_time);
+    $written = fwrite($metafile, $bytes);
     fclose($metafile);
+    return $written === strlen($bytes);
+}
+
+// --------------------------------------------------------------------------------
+// Block based feed access
+//
+// FeedReader and FeedWriter read and write feeds in blocks rather than one datapoint
+// at a time, which is several times faster in PHP. Errors are thrown as
+// PostProcessException, which the runner reports as a failed process.
+// --------------------------------------------------------------------------------
+
+class PostProcessException extends Exception {}
+
+// Number of datapoints to read or write at a time
+const POSTPROCESS_BLOCKSIZE = 65536;
+
+// Start time of this run of a process for the output feed meta (start_time, interval, npoints)
+// recent: from the end of the output feed
+// from:   from process_start, aligned to the output interval, no later than the end of the output feed
+// all:    from the start of the output feed
+function resolve_start_time($params, $meta)
+{
+    $end_time = $meta->start_time + ($meta->npoints * $meta->interval);
+    $mode = isset($params->process_mode) ? $params->process_mode : 'recent';
+
+    if ($mode == 'recent') {
+        return $end_time;
+    }
+    if ($mode == 'from') {
+        $start_time = max((int) $params->process_start, $meta->start_time);
+        $start_time = $meta->start_time + floor(($start_time - $meta->start_time) / $meta->interval) * $meta->interval;
+        return min($start_time, $end_time);
+    }
+    return $meta->start_time;
+}
+
+class FeedReader
+{
+    public $id;
+    public $meta;
+    private $fh;
+
+    public function __construct($dir, $id)
+    {
+        $this->id = (int) $id;
+        if (!file_exists($dir.$this->id.".meta") || !file_exists($dir.$this->id.".dat")) {
+            throw new PostProcessException("feed ".$this->id." does not exist");
+        }
+        $this->meta = getmeta($dir, $this->id);
+        $this->meta->npoints = (int) $this->meta->npoints;
+        if (!$this->meta->interval) {
+            throw new PostProcessException("feed ".$this->id." has no interval");
+        }
+        if (!$this->fh = @fopen($dir.$this->id.".dat", 'rb')) {
+            throw new PostProcessException("could not open feed ".$this->id);
+        }
+    }
+
+    public function __destruct()
+    {
+        if ($this->fh) fclose($this->fh);
+    }
+
+    // Read $n datapoints starting at position $pos, positions outside of the feed are NAN
+    public function read($pos, $n)
+    {
+        $from = max($pos, 0);
+        $to = min($pos + $n, $this->meta->npoints);
+
+        if ($from == $pos && $to == $pos + $n) {
+            fseek($this->fh, $from * 4);
+            $values = array_values(unpack("f*", fread($this->fh, $n * 4)));
+            if (count($values) == $n) return $values;
+        }
+
+        $values = array_fill(0, $n, NAN);
+        if ($to > $from) {
+            fseek($this->fh, $from * 4);
+            $i = $from - $pos;
+            foreach (unpack("f*", fread($this->fh, ($to - $from) * 4)) as $value) {
+                $values[$i++] = $value;
+            }
+        }
+        return $values;
+    }
+
+    // Read $n values on the timeline $start_time + i * $interval, which may differ from
+    // the feed's own start time and interval. Each value covers [time, time + interval):
+    // - feed interval shorter: mean of the datapoints within the interval, ignoring NAN
+    // - feed interval longer: the datapoint covering the start of the interval
+    public function read_time($start_time, $interval, $n)
+    {
+        $feed_start = $this->meta->start_time;
+        $feed_interval = $this->meta->interval;
+
+        if ($feed_interval == $interval && ($start_time - $feed_start) % $feed_interval == 0) {
+            return $this->read(intdiv($start_time - $feed_start, $feed_interval), $n);
+        }
+
+        $block_start = (int) floor(($start_time - $feed_start) / $feed_interval);
+        $block_end = (int) ceil(($start_time + $n * $interval - $feed_start) / $feed_interval);
+        $data = $this->read($block_start, $block_end - $block_start);
+
+        $values = array();
+        for ($i=0; $i<$n; $i++) {
+            $time = $start_time + $i * $interval;
+            $pos_start = (int) ceil(($time - $feed_start) / $feed_interval);
+            $pos_end = (int) ceil(($time + $interval - $feed_start) / $feed_interval);
+            if ($pos_end <= $pos_start) {
+                $pos_start = (int) floor(($time - $feed_start) / $feed_interval);
+                $pos_end = $pos_start + 1;
+            }
+            $sum = 0;
+            $count = 0;
+            for ($pos=$pos_start; $pos<$pos_end; $pos++) {
+                $value = $data[$pos - $block_start];
+                if (!is_nan($value)) {
+                    $sum += $value;
+                    $count++;
+                }
+            }
+            $values[] = $count ? $sum / $count : NAN;
+        }
+        return $values;
+    }
+}
+
+class FeedWriter
+{
+    public $id;
+    public $meta;
+    private $dir;
+    private $fh;
+    private $buffer = "";
+    private $pos = 0;
+    private $meta_pending = false;
+    private $bytes_written = 0;
+    private $last_time = false;
+    private $last_value = NAN;
+
+    public function __construct($dir, $id)
+    {
+        $this->dir = $dir;
+        $this->id = (int) $id;
+        if (!file_exists($dir.$this->id.".meta")) {
+            throw new PostProcessException("feed ".$this->id." does not exist");
+        }
+        if (!$this->fh = @fopen($dir.$this->id.".dat", 'c+')) {
+            throw new PostProcessException("could not open feed ".$this->id." for writing");
+        }
+        $this->meta = getmeta($dir, $this->id);
+        $this->meta->npoints = (int) $this->meta->npoints;
+    }
+
+    public function __destruct()
+    {
+        if ($this->fh) fclose($this->fh);
+    }
+
+    // Set the start time and interval of an output feed. An empty feed takes them (written
+    // with the first data), a feed with data must already match unless $reset is set, in
+    // which case existing data is discarded.
+    public function init($start_time, $interval, $reset = false)
+    {
+        if ($this->meta->npoints > 0 && !$reset) {
+            if ($this->meta->start_time != $start_time) {
+                throw new PostProcessException("feed ".$this->id." start time mismatch");
+            }
+            if ($this->meta->interval != $interval) {
+                throw new PostProcessException("feed ".$this->id." interval mismatch");
+            }
+            return;
+        }
+        if ($this->meta->npoints > 0) {
+            if (!ftruncate($this->fh, 0)) throw new PostProcessException("could not truncate feed ".$this->id);
+        }
+        $this->meta->start_time = $start_time;
+        $this->meta->interval = $interval;
+        $this->meta->npoints = 0;
+        $this->meta->end_time = $start_time;
+        $this->pos = 0;
+        $this->meta_pending = true;
+    }
+
+    // Move the write position to $time, a time beyond the end of the feed is padded with NAN
+    public function seek($time)
+    {
+        $offset = $time - $this->meta->start_time;
+        if (!$this->meta->interval || $offset < 0 || $offset % $this->meta->interval != 0) {
+            throw new PostProcessException("feed ".$this->id." invalid write time $time");
+        }
+        $this->flush();
+        $pos = intdiv($offset, $this->meta->interval);
+        if ($pos > $this->meta->npoints) {
+            fseek($this->fh, $this->meta->npoints * 4);
+            $this->pos = $this->meta->npoints;
+            $this->write_block(array_fill(0, $pos - $this->meta->npoints, NAN));
+        } else {
+            fseek($this->fh, $pos * 4);
+            $this->pos = $pos;
+        }
+    }
+
+    public function write($value)
+    {
+        $this->buffer .= pack("f", $value);
+        if (!is_nan($value)) {
+            $this->last_time = $this->meta->start_time + $this->pos * $this->meta->interval;
+            $this->last_value = $value;
+        }
+        $this->pos++;
+        if (strlen($this->buffer) >= POSTPROCESS_BLOCKSIZE * 4) $this->flush();
+    }
+
+    public function write_block($values)
+    {
+        $n = count($values);
+        if (!$n) return;
+        $this->buffer .= pack("f*", ...$values);
+        for ($i=$n-1; $i>=0; $i--) {
+            if (!is_nan($values[$i])) {
+                $this->last_time = $this->meta->start_time + ($this->pos + $i) * $this->meta->interval;
+                $this->last_value = $values[$i];
+                break;
+            }
+        }
+        $this->pos += $n;
+        if (strlen($this->buffer) >= POSTPROCESS_BLOCKSIZE * 4) $this->flush();
+    }
+
+    // Time of the next datapoint to be written
+    public function time()
+    {
+        return $this->meta->start_time + $this->pos * $this->meta->interval;
+    }
+
+    public function flush()
+    {
+        if ($this->buffer === "") return;
+        if ($this->meta_pending) {
+            if (!createmeta($this->dir, $this->id, $this->meta)) {
+                throw new PostProcessException("could not write meta for feed ".$this->id);
+            }
+            $this->meta_pending = false;
+        }
+        $length = strlen($this->buffer);
+        $written = fwrite($this->fh, $this->buffer);
+        if ($written !== $length) {
+            throw new PostProcessException("feed ".$this->id.": wrote $written of $length bytes, disk full?");
+        }
+        $this->bytes_written += $length;
+        $this->meta->npoints = max($this->meta->npoints, $this->pos);
+        $this->meta->end_time = $this->meta->start_time + $this->meta->npoints * $this->meta->interval;
+        $this->buffer = "";
+    }
+
+    // Flush remaining data and close. $truncate removes any existing data after the last
+    // datapoint written, use when reprocessing so that no stale data is left at the end.
+    // Updates the feed's last time and value in redis. Returns the number of bytes written.
+    public function close($truncate = false)
+    {
+        $this->flush();
+        if ($truncate && $this->pos < $this->meta->npoints) {
+            if (!ftruncate($this->fh, $this->pos * 4)) {
+                throw new PostProcessException("could not truncate feed ".$this->id);
+            }
+            $this->meta->npoints = $this->pos;
+            $this->meta->end_time = $this->time();
+        }
+        fclose($this->fh);
+        $this->fh = false;
+        if ($this->last_time !== false) {
+            updatetimevalue($this->id, $this->last_time, $this->last_value);
+        }
+        return $this->bytes_written;
+    }
+
+    public function last_time() { return $this->last_time; }
+    public function last_value() { return $this->last_value; }
 }
 
 //compute meta datas of different feeds intended for a preprocessing

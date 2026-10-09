@@ -24,7 +24,11 @@ while (true) {
     if ($process = $postprocess->pop_process_queue()) {
         print json_encode($process)."\n";
 
-        $result = $process_classes[$process->params->process]->process($process->params);
+        try {
+            $result = $process_classes[$process->params->process]->process($process->params);
+        } catch (Throwable $e) {
+            $result = array("success"=>false, "message"=>$e->getMessage());
+        }
         
         if ($result['success']) {
             print "Success: ".$result['message']."\n";

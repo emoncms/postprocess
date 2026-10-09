@@ -22,3 +22,11 @@ Alternatively to run manually:
 
     cd /opt/emoncms/modules/postprocess
     sudo php postprocess_run.php
+### Tests
+
+Processes are tested against small synthetic feeds in a temporary directory, no database or redis is required:
+
+    php tests/run.php            # all tests
+    php tests/run.php scalefeed  # tests whose name contains scalefeed
+
+New processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` in `common.php` for block based feed access, see `processes/backfillfeed.php` for an example.
