@@ -290,7 +290,9 @@ class ModelHelper
     public function read($key, $value)
     {
         if (!$this->fh[$key]) return $value;
-        $tmp = unpack("f", fread($this->fh[$key], 4));
+        $bytes = fread($this->fh[$key], 4);
+        if (strlen($bytes) != 4) return $value;
+        $tmp = unpack("f", $bytes);
         if ($tmp[1] !== null && !is_nan($tmp[1])) $value = $tmp[1];
         return $value;
     }

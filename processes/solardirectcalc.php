@@ -46,9 +46,13 @@ class PostProcess_solardirectcalc extends PostProcess_common
         // Start time of this process
         if ($params->process_mode=='recent') {
             $start_time = $out_meta->start_time + ($out_meta->npoints * $out_meta->interval);
-        } else if ($params->process_mode=='recent') {
+        } else if ($params->process_mode=='from') {
             $start_time = $params->process_start;
             if ($start_time<$out_meta->start_time) $start_time = $out_meta->start_time;
+            // Align to the output interval and stay within the output, no gap
+            $start_time = $out_meta->start_time + floor(($start_time - $out_meta->start_time) / $out_meta->interval) * $out_meta->interval;
+            $out_end_time = $out_meta->start_time + ($out_meta->npoints * $out_meta->interval);
+            if ($start_time>$out_end_time) $start_time = $out_end_time;
         } else {
             $start_time = $out_meta->start_time;
         }
@@ -68,9 +72,11 @@ class PostProcess_solardirectcalc extends PostProcess_common
         if (!$gen_fh = @fopen($this->dir.$params->gen.".dat", 'rb')) {
             return array("success"=>false, "message"=>"could not open generation feed");
         }
-        if (!$out_fh = @fopen($this->dir.$params->out.".dat", 'ab')) {
+        if (!$out_fh = @fopen($this->dir.$params->out.".dat", 'c+')) {
             return array("success"=>false, "message"=>"could not open output feed");
         }
+        // Write from start_time: reprocess and from modes overwrite existing data
+        fseek($out_fh, (($start_time - $out_meta->start_time) / $out_meta->interval) * 4);
 
         $buffer = "";
         for ($time=$start_time; $time<$end_time; $time+=$interval) 
