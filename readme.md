@@ -35,4 +35,4 @@ Most processes extend a base class in `common.php` and only implement the calcul
 - `InPlaceProcess`: transforms each value of a feed in place, implement `value($value)`, e.g. `processes/to_signed.php`
 - `CombineProcess`: combines input feeds on a common timeline into an output feed, implement `row($a, $b, ...)`, e.g. `processes/importcalc.php`, or with `reset($previous)` to accumulate, e.g. `processes/powertokwh.php`
 
-Other processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` for block based feed access, see `processes/backfillfeed.php` for an example.
+Simulations that step through time with several inputs and outputs use `ModelHelper`, e.g. `processes/batterysimulator.php`. Other processes can use `FeedReader`, `FeedWriter` and `resolve_start_time()` for block based feed access, see `processes/backfillfeed.php` for an example.

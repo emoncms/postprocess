@@ -179,11 +179,6 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             return array("success"=>true,"message"=>"Nothing to do, data already up to date");
         }
 
-        $solar = 0;
-        $use = 0;
-        $grid = 0;
-        $battery = 0;
-
         $solar_to_load_kwh = 0;
         $solar_to_grid_kwh = 0;
         $solar_to_battery_kwh = 0;
@@ -193,16 +188,28 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         $grid_to_battery_kwh = 0;
         // $solar_kwh = 0; // used for testing
 
-        // Get starting cumulative kWh values
-        $model->seek_to_time($start_time);
-        if ($model->meta['solar_to_load_kwh']->npoints) $solar_to_load_kwh = $model->read('solar_to_load_kwh',$solar_to_load_kwh);
-        if ($model->meta['solar_to_grid_kwh']->npoints) $solar_to_grid_kwh = $model->read('solar_to_grid_kwh',$solar_to_grid_kwh);
-        if ($model->meta['solar_to_battery_kwh']->npoints) $solar_to_battery_kwh = $model->read('solar_to_battery_kwh',$solar_to_battery_kwh);
-        if ($model->meta['battery_to_load_kwh']->npoints) $battery_to_load_kwh = $model->read('battery_to_load_kwh',$battery_to_load_kwh);
-        if ($model->meta['battery_to_grid_kwh']->npoints) $battery_to_grid_kwh = $model->read('battery_to_grid_kwh',$battery_to_grid_kwh);
-        if ($model->meta['grid_to_load_kwh']->npoints) $grid_to_load_kwh = $model->read('grid_to_load_kwh',$grid_to_load_kwh);
-        if ($model->meta['grid_to_battery_kwh']->npoints) $grid_to_battery_kwh = $model->read('grid_to_battery_kwh',$grid_to_battery_kwh);
-        // if ($model->meta['solar_kwh']->npoints) $solar_kwh = $model->read('solar_kwh',$solar_kwh);
+        // Get starting cumulative kWh values. The value at the start of the output feed is zero,
+        // after that the value at each slot includes the datapoint at the start of the slot, in
+        // which case processing continues from the next datapoint so that it is not counted twice.
+        $first_time = $start_time;
+        $start_slot = floor($start_time / $output_interval) * $output_interval;
+        if ($start_slot > $model->meta['grid_to_load_kwh']->start_time) {
+            $solar_to_load_kwh = $model->read_at('solar_to_load_kwh',$start_slot,$solar_to_load_kwh);
+            $solar_to_grid_kwh = $model->read_at('solar_to_grid_kwh',$start_slot,$solar_to_grid_kwh);
+            $solar_to_battery_kwh = $model->read_at('solar_to_battery_kwh',$start_slot,$solar_to_battery_kwh);
+            $battery_to_load_kwh = $model->read_at('battery_to_load_kwh',$start_slot,$battery_to_load_kwh);
+            $battery_to_grid_kwh = $model->read_at('battery_to_grid_kwh',$start_slot,$battery_to_grid_kwh);
+            $grid_to_load_kwh = $model->read_at('grid_to_load_kwh',$start_slot,$grid_to_load_kwh);
+            $grid_to_battery_kwh = $model->read_at('grid_to_battery_kwh',$start_slot,$grid_to_battery_kwh);
+            // $solar_kwh = $model->read_at('solar_kwh',$start_slot,$solar_kwh);
+            $first_time = $start_time + $interval;
+        }
+
+        // Missing values hold the last valid value, including from before this run
+        $solar = $this->valid_power($model->last_valid('solar',$first_time,0), 0);
+        $use = $this->valid_power($model->last_valid('use',$first_time,0), 0);
+        $grid = $this->valid_power($model->last_valid('grid',$first_time,0), 0);
+        $battery = $this->valid_power($model->last_valid('battery',$first_time,0), 0);
 
         $starting_values = array(
             "solar_to_load_kwh"=>number_format($solar_to_load_kwh, 3, '.', '')*1,
@@ -214,8 +221,18 @@ class PostProcess_solarbatterykwh extends PostProcess_common
             "grid_to_battery_kwh"=>number_format($grid_to_battery_kwh, 3, '.', '')*1
         );
 
-        // Reset again
-        $model->seek_to_time($start_time);
+        // Write the starting values at the start slot, later slots follow
+        $model->seek_to_time_outputs($start_time);
+        $model->write('solar_to_load_kwh',$solar_to_load_kwh);
+        $model->write('solar_to_grid_kwh',$solar_to_grid_kwh);
+        $model->write('solar_to_battery_kwh',$solar_to_battery_kwh);
+        $model->write('battery_to_load_kwh',$battery_to_load_kwh);
+        $model->write('battery_to_grid_kwh',$battery_to_grid_kwh);
+        $model->write('grid_to_load_kwh',$grid_to_load_kwh);
+        $model->write('grid_to_battery_kwh',$grid_to_battery_kwh);
+        // $model->write('solar_kwh',$solar_kwh); // used for testing
+
+        $model->seek_to_time_inputs($first_time);
 
         $power_to_kwh = $interval / 3600000.0; // conversion factor from W to kWh for given interval
 
@@ -229,7 +246,7 @@ class PostProcess_solarbatterykwh extends PostProcess_common
 
         $dp_per_feed_written = 0;
 
-        for ($time=$start_time; $time<$end_time; $time+=$interval)
+        for ($time=$first_time; $time<$end_time; $time+=$interval)
         {
             $solar         = $this->valid_power($model->read('solar',$solar), $solar);
             $use           = $this->valid_power($model->read('use',$use), $use);
@@ -353,7 +370,6 @@ class PostProcess_solarbatterykwh extends PostProcess_common
         }
         echo "\n";
 
-        $model->seek_to_time($start_time+$output_interval);
         $buffersize = $model->save_all();
 
         $elapsed_time = microtime(true) - $process_start_time;

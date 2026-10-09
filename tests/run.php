@@ -111,6 +111,24 @@ function same_value($expected, $actual)
 
 function assert_equal($expected, $actual, $message = "")
 {
+    // Long arrays: report the first difference
+    if (is_array($expected) && is_array($actual) && max(count($expected), count($actual)) > 20) {
+        $prefix = ($message ? "$message: " : "");
+        foreach ($expected as $i => $value) {
+            if (!array_key_exists($i, $actual)) {
+                throw new TestFailure($prefix."expected ".count($expected)." values, got ".count($actual));
+            }
+            if (!same_value($value, $actual[$i])) {
+                $from = max(0, $i - 2);
+                throw new TestFailure($prefix."first difference at index $i of ".count($expected).", expected "
+                    .fmt(array_slice($expected, $from, 5))." got ".fmt(array_slice($actual, $from, 5))." from index $from");
+            }
+        }
+        if (count($actual) != count($expected)) {
+            throw new TestFailure($prefix."expected ".count($expected)." values, got ".count($actual));
+        }
+        return;
+    }
     $ok = is_array($expected)
         ? is_array($actual) && count($expected) == count($actual)
             && count(array_filter(array_map('same_value', $expected, $actual))) == count($expected)
@@ -145,6 +163,41 @@ function assert_redis($id, $time, $value)
     if (!isset($redis->hashes["feed:$id"])) throw new TestFailure("redis feed:$id not set");
     assert_equal($time, $redis->hashes["feed:$id"]["time"], "redis feed:$id time");
     assert_equal($value, $redis->hashes["feed:$id"]["value"], "redis feed:$id value");
+}
+
+// Compare feeds with a snapshot in tests/snapshots/$name.json. A missing snapshot is
+// created from the current output, delete a snapshot to update it after an intended change.
+function assert_snapshot($name, $feeds)
+{
+    $snapshot = array();
+    foreach ($feeds as $key => $id) {
+        $meta = meta($id);
+        $values = values($id);
+        $last = count($values) ? end($values) : NAN;
+        $snapshot[$key] = array(
+            "start_time"=>$meta->start_time,
+            "interval"=>$meta->interval,
+            "npoints"=>count($values),
+            "md5"=>count($values) ? md5(pack("f*", ...$values)) : "",
+            "last"=>is_nan($last) ? "NAN" : sprintf("%.6g", $last)
+        );
+    }
+    $json = json_encode($snapshot, JSON_PRETTY_PRINT)."\n";
+    $file = __DIR__."/snapshots/$name.json";
+    if (!file_exists($file)) {
+        if (!is_dir(__DIR__."/snapshots")) mkdir(__DIR__."/snapshots");
+        file_put_contents($file, $json);
+        echo "        created snapshot $name\n";
+        return;
+    }
+    $expected = json_decode(file_get_contents($file), true);
+    foreach ($expected as $key => $feed) {
+        if (!isset($snapshot[$key])) throw new TestFailure("snapshot $name: missing feed $key");
+        if ($snapshot[$key] != $feed) {
+            throw new TestFailure("snapshot $name: feed $key expected ".json_encode($feed).", got ".json_encode($snapshot[$key]));
+        }
+    }
+    if (count($snapshot) != count($expected)) throw new TestFailure("snapshot $name: feed count differs");
 }
 
 // --------------------------------------------------------------------------------

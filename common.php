@@ -703,15 +703,31 @@ function bfo($elements, $values): float|int
     return $sum;
 }
 
+// Helper for simulation processes that step through time one datapoint at a time with
+// several input and output feeds. Inputs are read and outputs written in blocks, each feed
+// has a position like a file pointer: read() and write() move it on, seek_to_time() sets it.
 class ModelHelper
 {
+    // Datapoints per input block and per output write. Smaller than POSTPROCESS_BLOCKSIZE as
+    // values are held as PHP arrays for many feeds at once, 8192 is also slightly faster.
+    const BLOCKSIZE = 8192;
+
     private $dir;
     private $params;
-    private $fh = array();
-    private $buffer = array();
-    public $meta = array();
-    public $value = array();
+    private $readers = array();
+    private $writers = array();
+    // Next position to read or write for each feed
+    private $pos = array();
+    // Block of input values starting at $cache_start
+    private $cache = array();
+    private $cache_start = array();
+    private $cache_length = array();
+    // Output values not yet passed to the writer, and whether the writer is at $pos
+    private $pending = array();
+    private $pending_length = array();
+    private $positioned = array();
 
+    public $meta = array();
     public $start_time = false;
     public $end_time = false;
 
@@ -721,114 +737,201 @@ class ModelHelper
         $this->params = $params;
     }
 
-    private function load($key, $mode)
-    {
-        $this->meta[$key] = false;
-        $this->fh[$key] = false;
-        $this->value[$key] = false;
-
-        // check for valid key
-        if (!isset($this->params->$key)) return false;
-        $feedid = $this->params->$key;
-        // load meta
-        if (!$meta = getmeta($this->dir, $feedid)) return false;
-        $this->meta[$key] = $meta;
-
-        if (!$this->fh[$key] = @fopen($this->dir . $feedid . ".dat", $mode)) {
-            echo "ERROR: could not open " . $this->dir . $feedid . ".dat\n";
-            return false;
-        }
-
-        // Fetch last value
-        $this->value[$key] = 0.0;
-        if ($meta->npoints > 0) {
-            fseek($this->fh[$key], ($meta->npoints - 1) * 4);
-            $tmp = unpack("f", fread($this->fh[$key], 4));
-            if (!is_nan($tmp[1])) $this->value[$key] = 1 * $tmp[1];
-        }
-        return true;
-    }
-
+    // Open feed setting $key as an input. The model start and end times are the latest
+    // start and earliest end of the inputs. Returns false if the setting or feed is missing.
     public function input($key)
     {
-        if (!$result = $this->load($key, 'rb')) return false;
-        if ($this->start_time === false) $this->start_time = $this->meta[$key]->start_time;
-        else if ($this->meta[$key]->start_time > $this->start_time) $this->start_time = $this->meta[$key]->start_time;
-        if ($this->end_time === false) $this->end_time = $this->meta[$key]->end_time;
-        else if ($this->meta[$key]->end_time < $this->end_time) $this->end_time = $this->meta[$key]->end_time;
+        if (!isset($this->params->$key)) return false;
+        try {
+            $reader = new FeedReader($this->dir, $this->params->$key);
+        } catch (PostProcessException $e) {
+            return false;
+        }
+        $this->readers[$key] = $reader;
+        $this->meta[$key] = $reader->meta;
+        $this->pos[$key] = 0;
+        $this->cache[$key] = array();
+        $this->cache_start[$key] = 0;
+        $this->cache_length[$key] = 0;
+
+        if ($this->start_time === false || $reader->meta->start_time > $this->start_time) $this->start_time = $reader->meta->start_time;
+        if ($this->end_time === false || $reader->meta->end_time < $this->end_time) $this->end_time = $reader->meta->end_time;
         return true;
     }
 
+    // Open feed setting $key as an output. Returns false if the setting or feed is missing,
+    // writes to outputs that are not open are ignored.
     public function output($key)
     {
-        if (!$this->load($key, 'c+')) return false;
-        $this->buffer[$key] = "";
+        if (!isset($this->params->$key)) return false;
+        try {
+            $writer = new FeedWriter($this->dir, $this->params->$key);
+        } catch (PostProcessException $e) {
+            return false;
+        }
+        $this->writers[$key] = $writer;
+        $this->meta[$key] = $writer->meta;
+        $this->pos[$key] = 0;
+        $this->pending[$key] = array();
+        $this->pending_length[$key] = 0;
+        $this->positioned[$key] = false;
+        $this->cache_start[$key] = 0;
+        $this->cache_length[$key] = 0;
         return true;
     }
 
+    // Set the start time and interval of all outputs, outputs with data must already match
+    public function set_output_meta($start_time, $interval)
+    {
+        foreach ($this->writers as $key => $writer) {
+            $writer->init($start_time, $interval);
+            $this->meta[$key] = $writer->meta;
+        }
+    }
+
+    // Read the value at the position of $key and move on, $value is returned if missing
     public function read($key, $value)
     {
-        if (!$this->fh[$key]) return $value;
-        $bytes = fread($this->fh[$key], 4);
-        if (strlen($bytes) != 4) return $value;
-        $tmp = unpack("f", $bytes);
-        if ($tmp[1] !== null && !is_nan($tmp[1])) $value = $tmp[1];
+        // Fast path: input value in the current block
+        if (!isset($this->pos[$key])) return $value;
+        $i = $this->pos[$key] - $this->cache_start[$key];
+        if ($i >= 0 && $i < $this->cache_length[$key]) {
+            $this->pos[$key]++;
+            $v = $this->cache[$key][$i];
+            return is_nan($v) ? $value : $v;
+        }
+
+        if (isset($this->writers[$key])) {
+            $v = $this->read_at($key, $this->time_of($key, $this->pos[$key]), NAN);
+            $this->pos[$key]++;
+            $this->positioned[$key] = false;
+            return is_nan($v) ? $value : $v;
+        }
+        if (!isset($this->readers[$key])) return $value;
+
+        // Read the next block
+        $pos = $this->pos[$key]++;
+        $npoints = $this->meta[$key]->npoints;
+        if ($pos < 0 || $pos >= $npoints) return $value;
+        $this->cache[$key] = $this->readers[$key]->read($pos, min(self::BLOCKSIZE, $npoints - $pos));
+        $this->cache_start[$key] = $pos;
+        $this->cache_length[$key] = count($this->cache[$key]);
+        $v = $this->cache[$key][0];
+        return is_nan($v) ? $value : $v;
+    }
+
+    // Value of $key at $time without moving its position, $value is returned if missing
+    public function read_at($key, $time, $value)
+    {
+        if (isset($this->writers[$key])) {
+            $this->flush_pending($key);
+            $v = $this->writers[$key]->value_at($time);
+        } else if (isset($this->readers[$key])) {
+            $meta = $this->meta[$key];
+            $pos = floor(($time - $meta->start_time) / $meta->interval);
+            $v = $this->readers[$key]->read((int) $pos, 1)[0];
+        } else {
+            return $value;
+        }
+        return is_nan($v) ? $value : $v;
+    }
+
+    // Values of $key for $n datapoints from $time without moving its position
+    public function read_range($key, $time, $n)
+    {
+        if (!isset($this->meta[$key])) return array_fill(0, $n, NAN);
+        $meta = $this->meta[$key];
+        $pos = (int) floor(($time - $meta->start_time) / $meta->interval);
+        if (isset($this->writers[$key])) {
+            $this->flush_pending($key);
+            $this->writers[$key]->flush();
+            $reader = new FeedReader($this->dir, $this->params->$key);
+            return $reader->read($pos, $n);
+        }
+        return $this->readers[$key]->read($pos, $n);
+    }
+
+    // Last value of input $key before $time that is not missing, looking back up to one
+    // block, used to continue holding the last value at the start of a run
+    public function last_valid($key, $time, $value)
+    {
+        if (!isset($this->readers[$key])) return $value;
+        $meta = $this->meta[$key];
+        $end = (int) ceil(($time - $meta->start_time) / $meta->interval);
+        $start = max(0, $end - POSTPROCESS_BLOCKSIZE);
+        if ($end <= $start) return $value;
+        $values = $this->readers[$key]->read($start, $end - $start);
+        for ($i=count($values)-1; $i>=0; $i--) {
+            if (!is_nan($values[$i])) return $values[$i];
+        }
         return $value;
     }
 
     public function seek_to_time($time)
     {
-        foreach (array_keys($this->fh) as $key) {
-            if (!$this->meta[$key]) continue;
-            $pos = floor(($time - $this->meta[$key]->start_time) / $this->meta[$key]->interval);
-            fseek($this->fh[$key], $pos * 4);
-        }
+        foreach (array_keys($this->pos) as $key) $this->seek($key, $time);
     }
 
     public function seek_to_time_inputs($time)
     {
-        foreach (array_keys($this->fh) as $key) {
-            if (!isset($this->buffer[$key])) {
-                $pos = floor(($time - $this->meta[$key]->start_time) / $this->meta[$key]->interval);
-                fseek($this->fh[$key], $pos * 4);
-            }
-        }
+        foreach (array_keys($this->readers) as $key) $this->seek($key, $time);
     }
 
+    public function seek_to_time_outputs($time)
+    {
+        foreach (array_keys($this->writers) as $key) $this->seek($key, $time);
+    }
+
+    private function seek($key, $time)
+    {
+        $meta = $this->meta[$key];
+        if (isset($this->writers[$key])) {
+            $this->flush_pending($key);
+            $this->positioned[$key] = false;
+        }
+        $this->pos[$key] = (int) floor(($time - $meta->start_time) / $meta->interval);
+    }
+
+    // Write $value at the position of output $key and move on
     public function write($key, $value)
     {
-        // Skip outputs that are not loaded
-        if (empty($this->fh[$key])) return;
-        $this->buffer[$key] .= pack("f", $value);
-        $this->value[$key] = $value;
+        // Fast path: output positioned with room in the block
+        if (isset($this->positioned[$key]) && $this->positioned[$key]) {
+            $this->pending[$key][] = $value;
+            $this->pos[$key]++;
+            if (++$this->pending_length[$key] >= self::BLOCKSIZE) $this->flush_pending($key);
+            return;
+        }
+        if (!isset($this->writers[$key])) return;
+        $this->writers[$key]->seek($this->time_of($key, $this->pos[$key]));
+        $this->positioned[$key] = true;
+        $this->write($key, $value);
     }
 
-    public function set_output_meta($start_time, $interval)
+    private function flush_pending($key)
     {
-        foreach (array_keys($this->buffer) as $key) {
-            $this->meta[$key]->start_time = $start_time;
-            $this->meta[$key]->interval = $interval;
-            if ($this->meta[$key]->end_time == 0) $this->meta[$key]->end_time = $start_time;
+        if ($this->pending_length[$key]) {
+            $this->writers[$key]->write_block($this->pending[$key]);
+            $this->pending[$key] = array();
+            $this->pending_length[$key] = 0;
         }
     }
 
+    private function time_of($key, $pos)
+    {
+        return $this->meta[$key]->start_time + $pos * $this->meta[$key]->interval;
+    }
+
+    // Write remaining data, close outputs and update their last time and value.
+    // Returns the number of bytes written.
     public function save_all()
     {
         $total_size = 0;
-        foreach (array_keys($this->buffer) as $key) {
-            $size = strlen($this->buffer[$key]);
-            if ($size > 0) {
-                $feedid = $this->params->$key;
-                // Write meta data
-                createmeta($this->dir, $feedid, $this->meta[$key]);
-                // Write data
-                fwrite($this->fh[$key], $this->buffer[$key]);
-                fclose($this->fh[$key]);
-                $total_size += $size;
-                // Update feed last time and value
-                updatetimevalue($feedid, time(), $this->value[$key]);
-            }
+        foreach ($this->writers as $key => $writer) {
+            $this->flush_pending($key);
+            $total_size += $writer->close();
         }
+        $this->writers = array();
         return $total_size;
     }
 }

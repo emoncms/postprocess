@@ -1,0 +1,128 @@
+{
+    "soc": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "35e84c7db42afeb7a971cd378e13dca6",
+        "last": "100"
+    },
+    "power": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "f5caf36755990d82d104d0832f929798",
+        "last": "0"
+    },
+    "charge": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "5de56e2e86f1d8bb7fe3e7bbca454012",
+        "last": "0"
+    },
+    "discharge": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "ab80ed81d948598172e80e78a6c5b339",
+        "last": "0"
+    },
+    "charge_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "605ab622937a327b1202b0e5ebdda366",
+        "last": "54.4838"
+    },
+    "discharge_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "cece123df4c9a0c90cba2c9ee8d1c5af",
+        "last": "47.0816"
+    },
+    "grid": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "bb1792f735bfecd52fbf87962bb1eefa",
+        "last": "-2423.78"
+    },
+    "import": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "a0efab22cd8180eed22a9c8c4fc0c613",
+        "last": "0"
+    },
+    "export": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "3ad7796a94488ce085d395c49b115996",
+        "last": "2423.78"
+    },
+    "import_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "59b2cd325adc18b0160321cfd1d85744",
+        "last": "101.801"
+    },
+    "export_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "d97daf00275d48faf275a8dd7ddb1d0f",
+        "last": "247.525"
+    },
+    "solar_to_load_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "6ca9150b4d120e427be3faa614d79eb5",
+        "last": "54.4157"
+    },
+    "solar_to_grid_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "50127ab39c65b3780ddaa04e377027bc",
+        "last": "201.988"
+    },
+    "solar_to_battery_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "3fb1a75cf58fe7f5c40348d9da704bde",
+        "last": "12.2963"
+    },
+    "battery_to_load_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "8c16a4907b1ad921a64d4d994cfa995b",
+        "last": "1.54472"
+    },
+    "battery_to_grid_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "d2f1398575efafe623727270a0165645",
+        "last": "45.5369"
+    },
+    "grid_to_load_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "8018302a2893afee54cb082a07237887",
+        "last": "59.6134"
+    },
+    "grid_to_battery_kwh": {
+        "start_time": 1711324800,
+        "interval": 10,
+        "npoints": 100000,
+        "md5": "8673272af7085e080952e7953ed82a7a",
+        "last": "42.1875"
+    }
+}
